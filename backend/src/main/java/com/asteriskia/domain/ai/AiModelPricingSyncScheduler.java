@@ -11,22 +11,20 @@ import org.springframework.stereotype.Component;
 
 /**
  * AiModelPricingSyncScheduler — atualiza {@code ai_model_pricing} diariamente com o preço
- * publicado pela Google, usado pra estimar o custo de IA (URA e Insights). Mirror de
- * {@code ConnectivityScheduler}/{@code JiraSyncScheduler} — job agendado + método público
+ * publicado pela Google, usado pra estimar o custo de IA. Job agendado + método público
  * reaproveitado pelo endpoint de disparo manual ({@code POST /api/v1/ai/model-pricing/sync-now}).
  *
  * <p><b>Nunca sobrescreve com preço zero/inválido</b>: {@link AiPricingSourceFetcher} só devolve
  * {@code success=true} depois de validar o valor (ver {@link AiPricingSourceFetcher#isPlausible});
  * em qualquer falha, o preço já cadastrado é mantido intocado e um alerta é enviado via Telegram
- * (mesmo canal já usado pelos alertas de Zabbix) — esse valor alimenta decisão de negócio, uma
- * defasagem silenciosa é pior do que um alerta de falha.
+ * (mesmo canal já usado pelos alertas de Zabbix).
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AiModelPricingSyncScheduler {
 
-    /** Modelos rastreados hoje pelo pipeline de custos de IA (URA + Insights). Adicionar um
+    /** Modelos rastreados hoje pelo pipeline de custos de IA. Adicionar um
      * modelo novo aqui basta — o id precisa bater com o `<h2 id=...>` da página de preços. */
     private static final List<String> TRACKED_MODEL_IDS =
             List.of("gemini-2.5-flash", "gemini-2.5-flash-preview-tts");

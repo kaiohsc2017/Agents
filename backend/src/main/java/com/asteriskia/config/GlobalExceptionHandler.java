@@ -80,11 +80,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
-        // Achado durante a validação em produção do módulo Financeiro: sem este handler,
-        // ResponseStatusException (usada em vários controllers — InsightsUploadController,
-        // AgentReportController, CostAlertController — para 404/401/409/400) caía no
-        // catch-all de RuntimeException abaixo, virando sempre 500 e mascarando o status
-        // real (e a mensagem, quando não sensível) que o próprio código já tinha decidido.
+        // Sem este handler, ResponseStatusException caía no catch-all de RuntimeException abaixo,
+        // virando sempre 500 e mascarando o status real retornado pelo controller.
         log.debug("ResponseStatusException: {} — {}", ex.getStatusCode(), ex.getReason());
         return ResponseEntity.status(ex.getStatusCode())
                 .body(Map.of("error", ex.getReason() != null ? ex.getReason() : "Erro na requisição"));

@@ -180,7 +180,34 @@ flowchart TD
     MintJWT --> Ret200[Retorna Access Token + Refresh Token]
 ```
 
-### 4.3. Monitoramento e Alertas Zabbix (Módulo 3)
+### 4.3. Arquitetura de Configurações em Duas Camadas (Two-Tier Zero Downtime)
+
+O AgentIA adota um modelo de gerenciamento de configurações em dois níveis que elimina a necessidade de reinicialização de containers para alterações de negócio e integrações:
+
+1. **Camada 1 — Infraestrutura & Bootstrap (`.env`):**
+   - Chaves de conexão de banco de dados, portas de escuta e segredos mestres de infraestrutura (`SPRING_DATASOURCE_*`, `POSTGRES_PASSWORD`, `BACKEND_JWT_SECRET`).
+   - Carregadas exclusivamente no arranque dos containers.
+2. **Camada 2 — Negócio & Integrações Dinâmicas (`system_config`):**
+   - Configurações de mensageria, Zabbix, Telegram, Active Directory, SMTP, Jira e modelos de IA.
+   - Gerenciadas em banco de dados com cache em memória no Spring Boot (`ConfigService`).
+   - **Dual-Write:** Ao salvar na interface Web, o backend grava no banco com efeito imediato (0 segundos de downtime) e sincroniza o arquivo `.env` como redundância física para cold-boots.
+
+```mermaid
+flowchart LR
+    UI[Painel Sistema & Governança] -->|Salvar (Efeito Imediato)| Backend[Spring Boot Backend]
+    Backend -->|1. Invalida Cache & Grava| DB[(Tabela system_config)]
+    Backend -->|2. Persiste Backup| EnvFile[Arquivo env/.env]
+    Backend -.->|Sem Reinício de Containers| Services[Serviços em Runtime: Zabbix, Telegram, AD, Jira, IA]
+```
+
+### 4.4. Arquitetura Unificada de Frontend (SPA Nativa + ReportECH UX)
+
+A Plataforma de Agentes IA foi unificada diretamente dentro do repositório React 19 principal (`frontend/src/components/agents/`), eliminando o encapsulamento por `<iframe>`:
+- **Padrão Visual Corporativo ReportECH:** Uso consistente de tipografia Geist, paleta com variáveis CSS, Badges semânticos de status (`idle`, `running`, `success`, `error`, `paused`), Cards e Tabelas padronizadas.
+- **Roteamento SPA Dinâmico:** Subpáginas de agentes (`agDashboard`, `agAgents`, `agServers`, `agKnowledge`, `agLogs`, `agAlerts`, `agSecrets`, `agLlm`) renderizadas diretamente pelo roteador do AgentIA com controle de acesso por RBAC.
+- **Streaming WebSockets:** Conexão direta com `/agents/ws/logs/{agent_id}` para logs em tempo real sem intermediários.
+
+### 4.5. Monitoramento e Alertas Zabbix (Módulo 3)
 
 1. **Polling Scheduler:** O backend executa polling periódico (configurável via `ZABBIX_POLL_INTERVAL_MINUTES`) na API JSON-RPC do Zabbix.
 2. **Filtragem de Severidade:** Apenas incidentes ativos com severidade igual ou superior a `ZABBIX_MIN_SEVERITY` (Padrão: 4 — High / 5 — Disaster) entram na esteira de tratamento.

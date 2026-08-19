@@ -226,7 +226,16 @@ curl -s -X GET "https://agentia.voiphash.com.br/api/v1/connectivity/results?page
 }
 ```
 
-### 6.2. Endpoint Interno do Docker-Helper
+### 6.2. APIs de Configuração Dinâmica em Duas Camadas (Zero Downtime)
+
+- **Listar Todas as Configurações com Categorias:** `GET /api/v1/config/all`
+- **Consultar Valor por Chave:** `GET /api/v1/config/key/{key}`
+- **Atualizar Chave com Efeito Imediato (Zero Downtime):** `PUT /api/v1/config/key/{key}`
+  - **Payload:** `{"value": "novo_valor"}`
+  - **Efeito:** Invalidação de cache em memória no Spring Boot + persistência em `system_config` + sincronização no `.env`.
+- **Listar Categorias Disponíveis:** `GET /api/v1/config/categories`
+
+### 6.3. Endpoint Interno do Docker-Helper
 - **Endpoint:** `POST http://docker-helper:8090/container/restart`
 - **Header:** `X-Internal-Key: <INTERNAL_API_KEY>`
 

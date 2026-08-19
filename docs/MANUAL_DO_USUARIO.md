@@ -168,26 +168,22 @@ Exibe a esteira de incidentes críticos de infraestrutura capturados via integra
 
 ---
 
-### 3.4. Plataforma de Agentes de Automação
+### 3.4. Plataforma Nativa de Agentes IA (8 Visões Especializadas)
 
-Submenu especializado para criação, agendamento e execução de robôs de automação inteligente.
+A plataforma de Agentes Autônomos está **nativamente integrada** à interface principal do AgentIA com o padrão visual corporativo ReportECH:
 
-```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ AGENTES DE AUTOMAÇÃO IA                                          [ + Criar Novo Agente ] │
-├──────────────────────────────────────────────────────────────────────────────────────────┤
-│ Nome do Agente              │ Tipo │ Servidor Destino │ Agendamento │ Status   │ Ações   │
-│ Validador de Espaço em Disco│ SSH  │ srv-db-prod-01   │ 0 */2 * * * │ Ativo    │ [▶] [📝]│
-│ Backup Diário PostgreSQL    │ DB   │ pg-master        │ 0 03 * * *  │ Ativo    │ [▶] [📝]│
-│ Healthcheck HTTP APIs       │ WEB  │ api.interno.corp │ */15 * * * *│ Ativo    │ [▶] [📝]│
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-#### Tipos de Agentes Disponíveis:
-1. **Agente SSH:** Conecta em servidores remotos Linux via chave criptográfica e executa rotinas de manutenção ou diagnósticos.
-2. **Agente de Banco de Dados (DB):** Conecta em bancos SQL (Postgres, Oracle, MySQL) e roda queries de validação de consistência.
-3. **Agente Web / HTTP:** Executa testes em APIs REST, checa códigos de retorno HTTP (200 OK) e valida tempos de resposta.
-4. **Agente de Logs:** Lê arquivos de log remotos e aciona alertas caso identifique padrões de erro (`Exception`, `Fatal Error`).
+1. 📊 **Dashboard de Agentes:** Visão consolidada de KPIs operacionais (robôs ativos, execuções com sucesso, falhas, alertas), gráfico de taxa de sucesso por agente e tabela de execuções recentes.
+2. 🤖 **Agentes Autônomos:** Criação e gestão de robôs inteligentes com suporte a múltiplos tipos:
+   - **`ssh_test`:** Executa comandos e diagnósticos remotos via SSH com auxílio de IA.
+   - **`web_monitor`:** Valida integridade e tempo de resposta de endpoints HTTP/HTTPS.
+   - **`log_monitor`:** Monitora arquivos de log em busca de padrões anômalos.
+   - **`database`:** Executa validações de integridade em bancos SQL.
+3. 🖥️ **Servidores & Hosts SSH:** Cadastro seguro de servidores Linux com teste instantâneo de conectividade e status online/falha.
+4. 📚 **Base de Conhecimento (RAG):** Upload e indexação semântica de manuais e SOPs em PDF via PostgreSQL `pgvector`, consultados pelos agentes durante diagnósticos.
+5. 💻 **Console de Logs de Execução:** Terminal com streaming em tempo real via WebSocket, visualização colorida de níveis de log (INFO, SUCCESS, WARN, ERROR) e exportação `.txt`.
+6. 🚨 **Central de Alertas:** Histórico detalhado de notificações disparadas automaticamente pelos agentes para Telegram, E-mail corporativo ou Webhook.
+7. 🔑 **Secrets Vault:** Cofre seguro de credenciais por agente, permitindo utilizar senhas e tokens nos comandos com a sintaxe `{{NOME_DA_CHAVE}}`.
+8. ⚙️ **Configurações de IA & LLMs:** Painel para alternar entre provedores de IA (Google Gemini, Anthropic Claude, OpenAI, Ollama), selecionar modelos e realizar testes de prompt ao vivo.
 
 ---
 
@@ -236,11 +232,21 @@ Localizado no cabeçalho ou barra inferior da plataforma, permitindo que qualque
 
 ---
 
+### 3.7. Tela: Sistema & Governança (Zero Downtime)
+
+Centraliza o gerenciamento de configurações da aplicação:
+- **Salvar (Efeito Imediato):** Atualiza variáveis de integração (Zabbix, Telegram, Active Directory, SMTP, Jira) instantaneamente no banco de dados (`system_config`) com invalidação de cache e efeito em 0 segundos, sem reiniciar nenhum container.
+- **Salvar e Reiniciar:** Aplica alterações de infraestrutura profunda que requerem recreação de containers via Docker-Helper.
+
+---
+
 ## 4. Guia Rápido de Solução de Dúvidas Operacionais
 
 - **P: Por que o teste de conectividade ficou com status `SEM_RESPOSTA`?**  
   *R:* O número chamado tocou até o tempo limite configurado (30 segundos) sem que ninguém atendesse ou caísse na caixa postal.
-- **P: Por que não consigo ver o menu de Configurações?**  
-  *R:* O seu usuário não possui a permissão `rw` ou `r` associada à chave `telecom.settings` no seu Grupo de Acesso. Solicite ao administrador da plataforma.
+- **P: Por que não consigo ver o menu de Configurações ou Agentes?**  
+  *R:* O seu usuário não possui a permissão `rw` ou `r` associada à chave correspondente no seu Grupo de Acesso. Solicite ao administrador da plataforma.
 - **P: Como escutar o áudio de um teste antigo?**  
   *R:* Acesse o menu **Conectividade**, filtre pelo número desejado e clique no ícone de visualização `[👁️]`. O histórico com o reprodutor de áudio será aberto.
+- **P: As alterações no menu de Configurações derrubam as ligações em andamento?**  
+  *R:* Não. O botão **Salvar (Efeito Imediato)** utiliza a arquitetura Two-Tier Zero Downtime, aplicando as novas configurações em memória sem reiniciar o Asterisk ou o backend.

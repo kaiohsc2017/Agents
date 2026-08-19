@@ -1,6 +1,6 @@
 # AgentIA
 
-Plataforma corporativa de **Agentes Autônomos de Inteligência Artificial + Monitoramento e Conectividade Telecom**, integrando **Asterisk 21 LTS + FastAPI + Spring Boot 3.3 (Java 21) + React 19** em arquitetura conteinerizada de Alta Disponibilidade (HA).
+Plataforma corporativa de **Agentes Autônomos de Inteligência Artificial + Monitoramento e Conectividade Telecom**, integrando **Asterisk 21 LTS + FastAPI + Spring Boot 3.3 (Java 21) + React 19** em arquitetura conteinerizada de Alta Disponibilidade (HA) com o padrão visual corporativo **ReportECH**.
 
 ---
 
@@ -8,10 +8,11 @@ Plataforma corporativa de **Agentes Autônomos de Inteligência Artificial + Mon
 
 | Módulo | Descrição |
 |--------|-----------|
-| 🤖 **Plataforma de Agentes Autônomos** | Orquestração de agentes autônomos de IA (SSH, Web, Logs, DB, RAG via pgvector/pg_trgm, Secrets Vault e Multi-Model LLM: Gemini, OpenAI, Claude, Groq). |
+| 🤖 **Plataforma Nativa de Agentes IA** | Orquestração nativa de agentes autônomos de IA (SSH, Web, Logs, DB, RAG via pgvector, Secrets Vault e Multi-Model LLM: Gemini, OpenAI, Claude, Groq, Ollama). |
 | 📞 **Conectividade Telecom** | Testes programados e periódicos de conectividade de números telefônicos (E1, SIP, DDR, 0800 e DID) com discagem ativa e telemetria. |
 | 🚨 **Monitoramento & Alertas (Zabbix)** | Captura de alarmes críticos de infraestrutura via Zabbix API → disparo de ligação telefônica automatizada + notificação Telegram. |
-| 👥 **Governança, RBAC & Cadastros** | Gestão de usuários, grupos de acesso granulares (RBAC por recurso), sincronização Active Directory (LDAPS), 2FA/TOTP, Trilha de Auditoria, Operadoras e Linhas. |
+| ⚙️ **Sistema & Governança (Zero Downtime)** | Arquitetura de Duas Camadas com *Dual-Write* no banco de dados (`system_config`) e `.env`, permitindo alterações de integração com efeito em tempo de execução imediato sem reinício de containers. |
+| 👥 **RBAC, Governança & Cadastros** | Gestão de usuários, grupos de acesso granulares (RBAC por recurso), sincronização Active Directory (LDAPS), 2FA/TOTP, Trilha de Auditoria, Operadoras e Linhas. |
 
 ---
 
@@ -25,7 +26,7 @@ Plataforma corporativa de **Agentes Autônomos de Inteligência Artificial + Mon
 | **Telefonia / PBX** | Asterisk 21 LTS — chan_pjsip + app_audiosocket + WebRTC + AudioSocket |
 | **Banco de Dados** | PostgreSQL 16 com extensões `pgvector`, `pg_trgm` e `uuid-ossp` |
 | **Proxy Reverso & TLS** | Caddy 2 — TLS automático (Let's Encrypt / ZeroSSL) e Proxy WebSocket/HTTP |
-| **Segurança / DevSecOps** | Fail2ban + nftables (Lockdown SIP) + Argon2id + JWT Seguro + Zero Secrets |
+| **Segurança / DevSecOps** | Fail2ban + nftables (Lockdown SIP) + Argon2id + JWT Seguro + Secrets Vault |
 | **Infraestrutura** | Docker Compose v2 — 7 containers em rede isolada `172.16.7.0/24` |
 
 ---
@@ -60,8 +61,8 @@ docker compose up -d --build
 
 | Serviço | Rota / URL | Descrição |
 |---------|------------|-----------|
-| **Painel AgentIA** | `https://app.voiphash.com.br` | Interface SPA unificada com padrão ReportECH |
-| **Plataforma de Agentes** | `https://app.voiphash.com.br/agents/` | Módulo embutido de gestão de agentes e execuções |
+| **Painel AgentIA** | `https://agentia.voiphash.com.br` | Interface SPA unificada com design system ReportECH |
+| **Plataforma de Agentes** | `https://agentia.voiphash.com.br/#agDashboard` | Módulo nativo integrado na barra lateral do AgentIA |
 | **Documentação Técnica** | `docs/` | Guias de implantação, arquitetura, manual e APIs |
 
 ---
@@ -70,7 +71,7 @@ docker compose up -d --build
 
 | Container | IP Interno | Função |
 |-----------|------------|--------|
-| `agentia-frontend` | `172.16.7.15` | Nginx 1.27 servindo React SPA + Proxy interno |
+| `agentia-frontend` | `172.16.7.15` | Nginx 1.27 servindo React 19 SPA + Proxy interno |
 | `agentia-backend` | `172.16.7.14` | Spring Boot 3.3 (Java 21) / Tomcat 11 |
 | `agentia-agents-api` | `172.16.7.16` | FastAPI / Python 3.12 (Agentes Autônomos) |
 | `agentia-asterisk` | `172.16.7.12` | Asterisk 21 LTS (PJSIP / WebRTC / AudioSocket) |
@@ -96,11 +97,10 @@ docker compose up -d --build
 
 ## 📚 Documentação Técnica Completa
 
-Os documentos detalhados estão disponíveis no diretório [`docs/`](file:///opt/AgentIA/docs):
-- [Manual do Usuário](file:///opt/AgentIA/docs/MANUAL_DO_USUARIO.md)
-- [Referência Técnica](file:///opt/AgentIA/docs/REFERENCIA_TECNICA.md)
-- [Arquitetura de Solução](file:///opt/AgentIA/docs/ARQUITETURA.md)
-- [Matriz de Conectividade & Portas](file:///opt/AgentIA/docs/MATRIZ_DE_CONECTIVIDADE.md)
-- [Documentação das APIs REST](file:///opt/AgentIA/docs/DOCUMENTACAO_DAS_APIS.md)
-- [Guia de Implantação (Ubuntu & Oracle Linux 9)](file:///opt/AgentIA/docs/IMPLANTACAO.md)
-
+Os documentos detalhados estão disponíveis no diretório [`docs/`](docs/):
+- [Manual do Usuário](docs/MANUAL_DO_USUARIO.md)
+- [Referência Técnica](docs/REFERENCIA_TECNICA.md)
+- [Arquitetura de Solução](docs/ARQUITETURA.md)
+- [Matriz de Conectividade & Portas](docs/MATRIZ_DE_CONECTIVIDADE.md)
+- [Documentação das APIs REST](docs/DOCUMENTACAO_DAS_APIS.md)
+- [Guia de Implantação (Ubuntu & Oracle Linux 9)](docs/IMPLANTACAO.md)

@@ -1,6 +1,6 @@
-# VoipIA Agentes
+# AgentIA Agentes
 
-Plataforma de agentes autônomos integrada ao VoipIA Telecom.
+Plataforma de agentes autônomos de Inteligência Artificial integrada ao ecossistema **AgentIA**.
 
 ## Acesso
 
@@ -10,18 +10,17 @@ https://app.voiphash.com.br/agents/
 
 ## Stack
 
-A plataforma de agentes compartilha a infraestrutura do VoipIA Telecom —
-banco de dados e frontend são unificados.
+A plataforma de agentes compartilha a infraestrutura do AgentIA — banco de dados e frontend são integrados.
 
 | Camada    | Tecnologia              | Container / Servidor              |
 |-----------|-------------------------|-----------------------------------|
-| Frontend  | React 18 (UMD)          | `voipia-frontend` (nginx, rota `/agents/`) |
-| Backend   | FastAPI + Python 3.12   | `voipia-agents-api`           |
-| Banco     | PostgreSQL 16           | `voipia-postgres` (banco unificado) |
+| Frontend  | React 19                | `agentia-frontend` (nginx, rota `/agents/`) |
+| Backend   | FastAPI + Python 3.12   | `agentia-agents-api`              |
+| Banco     | PostgreSQL 16           | `agentia-postgres` (banco unificado) |
 
-O roteamento `/agents/*` é feito pelo Caddy:
-- `/agents/`        → frontend (`voipia-frontend:80`)
-- `/agents/api/*`   → backend (`voipia-agents-api:8000`)
+O roteamento `/agents/*` é feito pelo Caddy / Nginx:
+- `/agents/`        → frontend (`agentia-frontend:80`)
+- `/agents/api/*`   → backend (`agentia-agents-api:8000`)
 - `/agents/ws/*`    → WebSocket do backend (logs em tempo real)
 
 ## Tipos de agente
@@ -33,13 +32,11 @@ O roteamento `/agents/*` é feito pelo Caddy:
 
 ## Memória
 
-Cada agente tem memória individual persistida no PostgreSQL (banco unificado
-`asteriskia`). Agentes podem consultar a memória uns dos outros antes de
-acionar a IA externa (RAG via pg_trgm).
+Cada agente tem memória individual persistida no PostgreSQL (banco unificado `asteriskia`). Agentes podem consultar a memória uns dos outros antes de acionar a IA externa (RAG via pg_trgm).
 
 ## Variáveis de ambiente
 
-O backend de agentes lê as variáveis `AGENTS_*` do `.env` do VoipIA Telecom.
+O backend de agentes lê as variáveis `AGENTS_*` do `env/.env` do AgentIA.
 As principais:
 
 ```env
@@ -49,7 +46,7 @@ AGENTS_LLM_ENABLED=false          # habilite ao configurar a chave
 AGENTS_LLM_GOOGLE_KEY=            # vazio herda GEMINI_API_KEY
 ```
 
-O banco e o JWT são compartilhados com o Telecom (`POSTGRES_*`, `BACKEND_JWT_SECRET`).
+O banco e o JWT são compartilhados com o core do AgentIA (`POSTGRES_*`, `BACKEND_JWT_SECRET`).
 
 ## Deploy
 
@@ -62,7 +59,7 @@ docker compose up -d --build
 # Atualizar apenas o backend de agentes
 docker compose up -d --build --no-deps agents-backend
 
-# Atualizar o frontend (serve Telecom + Agentes)
+# Atualizar o frontend (serve AgentIA + Agentes)
 docker compose up -d --build --no-deps frontend
 ```
 

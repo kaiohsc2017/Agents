@@ -1,4 +1,4 @@
-# VoipIA — Contexto para o Claude Code
+# AgentIA — Contexto para Engenharia & IA
 
 ## Perfil de atuação
 
@@ -6,17 +6,17 @@ Você é um Engenheiro Sênior de Software e DevOps com profundo conhecimento em
 
 - **VoIP:** Asterisk 21 LTS, protocolo SIP/PJSIP, WebRTC, RTP/SRTP, AudioSocket, AMI, DTMF, codecs G.711a/u
 - **Backend:** Java 21 + Spring Boot 3.3 (Tomcat 11), Flyway, JPA/Hibernate, WebSocket STOMP, WebClient reativo
-- **Python:** asyncio, FastAPI, asyncpg, google-genai SDK, AudioSocket server assíncrono
-- **Frontend:** React 18 + TypeScript, Vite, Nginx, JsSIP (softphone WebRTC)
-- **Infra:** Docker Compose, Caddy 2 (TLS automático), PostgreSQL 16, Fail2ban, nftables, Ubuntu 24.04
-- **Integrações:** Google Gemini (STT/LLM/TTS), Jira Cloud REST API v3, Zabbix JSON-RPC, Telegram Bot API
+- **Python:** asyncio, FastAPI, asyncpg, google-genai SDK, APScheduler, pgvector
+- **Frontend:** React 19 + TypeScript, Vite 6, Tailwind CSS, shadcn/ui, JsSIP (softphone WebRTC)
+- **Infra:** Docker Compose v2, Caddy 2 (TLS automático), PostgreSQL 16 (pgvector / pg_trgm), Fail2ban, nftables, Ubuntu 24.04 / Oracle Linux 9
+- **Integrações:** Google Gemini (STT/LLM/TTS), Zabbix JSON-RPC, Telegram Bot API, Active Directory / LDAPS
 
 ## Princípios de trabalho
 
 - **Leia antes de agir** — sempre inspecione os arquivos relevantes antes de qualquer mudança
 - **Cirúrgico** — altere apenas o necessário; sem refatorações desnecessárias ou "melhorias" não solicitadas
 - **Código limpo** — comentários em português, nomes descritivos, sem código morto
-- **Valide sempre** — antes de commitar: `bash -n` para shell, `python -m ast` para Python, `tsc --noEmit` para TypeScript
+- **Valide sempre** — antes de commitar: `bash -n` para shell, `python -m py_compile` para Python, `tsc --noEmit` para TypeScript
 - **Commits atômicos** — um commit por problema resolvido, mensagem descritiva em português
 - **Em dúvida, pergunte** — não assuma intenções; pergunte antes de decisões irreversíveis
 - **Nunca exponha credenciais** — nem em logs, outputs, comentários ou mensagens de commit
@@ -28,13 +28,12 @@ Você é um Engenheiro Sênior de Software e DevOps com profundo conhecimento em
 
 | Item | Valor |
 |------|-------|
-| VPS | `app.voiphash.com.br` — Ubuntu 24.04 LTS |
+| VPS | `app.voiphash.com.br` — Ubuntu 24.04 LTS / Oracle Linux 9 |
 | IP público | `129.121.51.29` |
-| Repositório no VPS | `/opt/VoipIA` |
-| Remote Git | `github.com/kaiohsc2017/VoipIA` (`origin`), ver [git-workflow.md](.claude/rules/common/git-workflow.md) |
+| Repositório no VPS | `/opt/AgentIA` |
+| Remote Git | `github.com/kaiohsc2017/Agents.git` (`origin: main`) |
 | Branch principal | `main` |
-| `.env` real | `/opt/VoipIA/env/.env` |
-| `.env` symlink | `/opt/VoipIA/.env` → aponta para o real |
+| `.env` real | `/opt/AgentIA/env/.env` |
 | TLS | Caddy 2 — Let's Encrypt automático |
 | Domínios | `app.voiphash.com.br`, `claw.voiphash.com.br` |
 
@@ -42,20 +41,17 @@ Você é um Engenheiro Sênior de Software e DevOps com profundo conhecimento em
 
 ## Stack de containers
 
-Rede Docker: `voipia-net` — bridge `172.16.7.0/24`
+Rede Docker: `agentia-net` — bridge `172.16.7.0/24`
 
 | IP | Container | Imagem / Build | Função |
 |----|-----------|----------------|--------|
-| `172.16.7.10` | `voipia-caddy` | `caddy:2-alpine` | Proxy reverso HTTPS — entrada de todo tráfego externo |
-| `172.16.7.11` | `voipia-postgres` | `postgres:16-alpine` | Banco unificado (Telecom + Agentes) |
-| `172.16.7.12` | `voipia-asterisk` | build `./asterisk` | PBX — Asterisk 21 LTS |
-| `172.16.7.13` | `voipia-ai-agent` | build `./ai-agent` | Servidor AudioSocket Python — STT/LLM/TTS via Gemini |
-| `172.16.7.18` | `asteriskia-insights` | build `./insights` | Serviço Python (loop de polling, sem porta própria) — transcreve/analisa via Gemini as gravações do call center corporativo Verint em `/opt/audio` (módulo apartado do domínio Asterisk, tela "Insights") |
-| `172.16.7.14` | `voipia-backend` | build `./backend` | Spring Boot 3.3 — API REST + WebSocket STOMP |
-| `172.16.7.15` | `voipia-frontend` | build `./frontend` | React 18 + Nginx — serve Telecom e Agentes |
-| `172.16.7.16` | `voipia-agents-api` | build `./agents-platform/backend` | FastAPI — plataforma de agentes autônomos |
-| `172.16.7.17` | `asteriskia-docker-helper` | build `./docker-helper` | Único container com acesso ao `docker.sock` (F-CRIT-10) — API interna estreita para `docker compose up`/`docker logs`/`docker exec` (asterisk), sem porta publicada no host, atrás de `X-Internal-Key` |
-| host | `voipia-security` | build `./security` | Fail2ban + nftables — `network_mode: host` |
+| `172.16.7.15` | `agentia-frontend` | build `./frontend` | React 19 + Nginx — SPA unificada e rota `/agents/` |
+| `172.16.7.14` | `agentia-backend` | build `./backend` | Spring Boot 3.3 (Java 21) — Core Telecom, RBAC & APIs |
+| `172.16.7.16` | `agentia-agents-api` | build `./agents-platform/backend` | FastAPI / Python 3.12 — Plataforma de Agentes Autônomos |
+| `172.16.7.12` | `agentia-asterisk` | build `./asterisk` | PBX Asterisk 21 LTS (PJSIP / AMI / WebRTC) |
+| `172.16.7.17` | `agentia-docker-helper` | build `./docker-helper` | Microserviço seguro para logs e healthcheck Docker |
+| `172.16.7.11` | `agentia-postgres` | `pgvector/pgvector:pg16` | PostgreSQL 16 unificado (`pgvector` + `pg_trgm`) |
+| host | `agentia-security` | build `./security` | Fail2ban + nftables — `network_mode: host` |
 
 **IPs reservados:** `.1–.9` (gateway/infra) e `.250–.254` (infra)
 

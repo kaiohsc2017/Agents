@@ -52,9 +52,9 @@ Esta seção define as portas e protocolos que **devem ser liberados nos firewal
 
 | # | Origem | Porta / Protocolo | Destino (Host/Container) | Serviço / Aplicação | Justificativa Técnica | Obrigatório? |
 |---|---|---|---|---|---|---|
-| **IN-01** | Internet / Clientes Web | `80/tcp` | Host → `voipia-caddy` / Caddy | HTTP (Redirecionamento / ACME) | Desafio HTTP-01 do Let's Encrypt / ZeroSSL para emissão automática de certificados TLS e redirecionamento para HTTPS. | **Sim** |
-| **IN-02** | Internet / Navegadores | `443/tcp` | Host → `voipia-caddy` / Caddy | HTTPS (TLS 1.3 / HTTP/2) | Acesso ao Dashboard Web, API REST, WebSocket STOMP e WebRTC Signaling WSS. | **Sim** |
-| **IN-03** | Internet / Navegadores | `443/udp` | Host → `voipia-caddy` / Caddy | HTTP/3 (QUIC) | Otimização de transporte HTTP/3 de alta velocidade e baixa latência para clientes web modernos. | Opcional (Recomendado) |
+| **IN-01** | Internet / Clientes Web | `80/tcp` | Host → Caddy 2 Proxy | HTTP (Redirecionamento / ACME) | Desafio HTTP-01 do Let's Encrypt / ZeroSSL para emissão automática de certificados TLS e redirecionamento para HTTPS. | **Sim** |
+| **IN-02** | Internet / Navegadores | `443/tcp` | Host → Caddy 2 Proxy | HTTPS (TLS 1.3 / HTTP/2) | Acesso ao Dashboard Web, API REST, WebSocket STOMP e WebRTC Signaling WSS. | **Sim** |
+| **IN-03** | Internet / Navegadores | `443/udp` | Host → Caddy 2 Proxy | HTTP/3 (QUIC) | Otimização de transporte HTTP/3 de alta velocidade e baixa latência para clientes web modernos. | Opcional (Recomendado) |
 | **IN-04** | Operadora de Telefonia / SBC / PBX IP | `5062/udp` | Host → `agentia-asterisk:5060` | Sinalização PJSIP | Recepção de chamadas telefônicas reais, registro de ramais SIP e interconexão de tronco IP. | **Sim** |
 | **IN-05** | Operadora de Telefonia / SBC / PBX IP | `5062/tcp` | Host → `agentia-asterisk:5060` | Sinalização PJSIP (TCP) | Sinalização SIP sobre TCP para operadoras que utilizam pacotes grandes ou SIP fragmentation. | **Sim** |
 | **IN-06** | Operadoras de Telefonia / Softphones | `16501-17000/udp` | Host → `agentia-asterisk` | Mídia RTP (Áudio G.711 / Opus) | Transporte de pacotes de áudio bidirecional em tempo real (voz). Sem essa liberação ocorre problema de áudio mudo (*one-way audio*). | **Sim** |

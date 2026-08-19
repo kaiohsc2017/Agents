@@ -14,11 +14,11 @@
 | **PBX & Sinalização de Voz** | Asterisk PBX | `21 LTS` | Gerenciamento de troncos SIP (PJSIP), canais RTP, softphone WebRTC e integração AMI. |
 | **Backend Core (Telecom)** | Spring Boot | `3.3.x` (Java 21 LTS) | API REST principal, regras de negócio, agendamento de testes, segurança e persistência. |
 | **Plataforma de Agentes IA** | FastAPI / AsyncIO | `0.111.x` (Python 3.12) | Orquestração de agentes autônomos (SSH, DB, Web, Logs), execução assíncrona e scheduler. |
-| **Frontend SPA** | React + TypeScript | `18.3.x` + Vite 5 | Interface web moderna, dashboards analíticos, gestão de cadastros e softphone SIP WebRTC. |
+| **Frontend SPA** | React + TypeScript | `19.x` + Vite 6 | Interface web moderna, dashboards analíticos, gestão de cadastros e softphone SIP WebRTC. |
 | **Softphone WebRTC** | JsSIP | `3.10.x` | Cliente SIP puro via WebSocket em navegador com suporte a áudio bidirecional Opus/PCMU. |
 | **Proxy Reverso & TLS** | Caddy Server | `2.8.x` | Roteamento HTTPS de alta performance, HTTP/3 (QUIC), terminação TLS automática via ACME. |
 | **Banco de Dados** | PostgreSQL + pgvector | `16.x` | Banco relacional ACID com extensões vetoriais para base de conhecimento de IA. |
-| **Migrações de Banco** | Flyway Community | `10.x` | Controle de versão de schema de banco de dados (`V1` até `V26+`). |
+| **Migrações de Banco** | Flyway Community | `10.x` | Controle de versão de schema de banco de dados (`V1` até `V89`). |
 | **Segurança Perimetral** | Fail2ban + nftables | `1.0.x` | Prevenção ativa contra ataques de força bruta, SIP scans e tentativa de registro indevido. |
 | **Containerização** | Docker Engine & Compose | `24.x+` / Compose v2 | Orquestração declarativa com isolamento de redes e limites de recursos de hardware. |
 
@@ -53,26 +53,26 @@ A tabela abaixo documenta a correlação exata entre o menu da interface, a chav
 
 | Menu / Tela (Frontend) | Resource Key | Permissões Suportadas | Controlador Backend | Tabelas no Banco de Dados |
 |---|---|---|---|---|
-| **Dashboard Telecom** | `telecom.dashboard` | `r` (Leitura) | `StatsController` | `tb_test_result`, `tb_alert_call` |
-| **Conectividade (Módulo 2)** | `telecom.modulo2` | `r` (Ver), `rw` (Disparar) | `ConnectivityController` | `tb_test_result`, `tb_linha`, `tb_numero_0800` |
-| **Monitoramento (Módulo 3)** | `telecom.modulo3` | `r` (Ver), `rw` (Gerenciar) | `AlertController` | `tb_alert_call`, `tb_alert_config` |
-| **Cadastros → Usuários** | `telecom.users` | `r` (Listar), `rw` (Criar/Editar) | `UserController` | `tb_user`, `tb_user_business_units` |
-| **Cadastros → Operadora** | `telecom.operadoras` | `r` (Listar), `rw` (Criar/Editar) | `OperadoraController` | `tb_operadora` |
-| **Cadastros → Linhas** | `telecom.linhas` | `r` (Listar), `rw` (Criar/Editar) | `LinhaController` | `tb_linha`, `tb_client`, `tb_business_unit` |
-| **Cadastros → 0800** | `telecom.0800` | `r` (Listar), `rw` (Criar/Editar) | `Numero0800Controller` | `tb_numero_0800`, `tb_client`, `tb_business_unit` |
-| **Sistema → Configurações** | `telecom.settings` | `r` (Ver), `rw` (Alterar) | `SettingsController`, `AsteriskConfigController` | `tb_system_config`, `tb_settings_history` |
-| **Sistema → Logs** | `telecom.logs` | `r` (Visualizar Logs) | `LogsController` | N/A (Stream de logs do Docker/Asterisk) |
-| **Sistema → Grupos de Acesso** | *Exclusivo ADMIN* | `rw` (Total) | `AccessGroupController` | `tb_access_group`, `tb_access_group_permissions` |
-| **Sistema → Auditoria** | `telecom.audit` | `r` (Consultar) | `AuditController` | `tb_audit_log` |
+| **Dashboard Telecom** | `telecom.dashboard` | `r` (Leitura) | `StatsController` | `test_results`, `alert_calls` |
+| **Conectividade (Módulo 2)** | `telecom.modulo2` | `r` (Ver), `rw` (Disparar) | `ConnectivityController` | `test_results`, `linhas`, `numeros_0800` |
+| **Monitoramento (Módulo 3)** | `telecom.modulo3` | `r` (Ver), `rw` (Gerenciar) | `AlertController` | `alert_calls`, `alert_contacts` |
+| **Cadastros → Usuários** | `telecom.users` | `r` (Listar), `rw` (Criar/Editar) | `UserController` | `app_users`, `user_business_units` |
+| **Cadastros → Operadora** | `telecom.operadoras` | `r` (Listar), `rw` (Criar/Editar) | `OperadoraController` | `operadoras` |
+| **Cadastros → Linhas** | `telecom.linhas` | `r` (Listar), `rw` (Criar/Editar) | `LinhaController` | `linhas`, `clients`, `business_units` |
+| **Cadastros → 0800** | `telecom.0800` | `r` (Listar), `rw` (Criar/Editar) | `Numero0800Controller` | `numeros_0800`, `clients`, `business_units` |
+| **Sistema → Configurações** | `telecom.settings` | `r` (Ver), `rw` (Alterar) | `SettingsController`, `AsteriskConfigController` | `system_config`, `settings_history` |
+| **Sistema → Logs** | `telecom.logs` | `r` (Visualizar Logs) | `LogsController` | N/A (Stream de logs via `agentia-docker-helper`) |
+| **Sistema → Grupos de Acesso** | *Exclusivo ADMIN* | `rw` (Total) | `AccessGroupController` | `access_groups`, `access_group_permissions` |
+| **Sistema → Auditoria** | `telecom.audit` | `r` (Consultar) | `AuditController` | `audit_logs` |
 | **Sistema → Release Notes** | `telecom.release` | `r` (Livre) | N/A (Frontend estático) | N/A |
-| **Agentes → Dashboard** | `agents.dashboard` | `r` (Ver métricas) | `routers/reports.py` | `agent_executions`, `agents` |
-| **Agentes → Agentes** | `agents.agents` | `r` (Listar), `rw` (Criar/Executar) | `routers/agents.py`, `routers/executions.py` | `agents`, `agent_executions` |
+| **Agentes → Dashboard** | `agents.dashboard` | `r` (Ver métricas) | `routers/reports.py` | `executions`, `agents` |
+| **Agentes → Agentes** | `agents.agents` | `r` (Listar), `rw` (Criar/Executar) | `routers/agents.py`, `routers/executions.py` | `agents`, `executions` |
 | **Agentes → Servidores** | `agents.servers` | `r` (Listar), `rw` (Gerenciar) | `routers/servers.py` | `servers` |
-| **Agentes → Base Conhecimento**| `agents.knowledge` | `r` (Listar), `rw` (Upload/Embed) | `routers/knowledge.py` | `knowledge_docs`, `knowledge_chunks` |
-| **Agentes → Logs** | `agents.logs` | `r` (Visualizar) | `routers/executions.py` | `agent_execution_logs` |
-| **Agentes → Alertas** | `agents.reports` | `r` (Visualizar Alertas) | `routers/reports.py` | `agent_executions` |
-| **Agentes → Secrets Vault** | `agents.secrets` | `r` (Listar chaves), `rw` (Salvar) | `routers/system.py` | `secrets` (AES-256-GCM) |
-| **Agentes → Config. IA** | `agents.llm` | `r` (Ver), `rw` (Alterar) | `routers/llm_config.py` | `llm_config` |
+| **Agentes → Base Conhecimento**| `agents.knowledge` | `r` (Listar), `rw` (Upload/Embed) | `routers/knowledge.py` | `knowledge_docs`, `agent_memory` |
+| **Agentes → Logs** | `agents.logs` | `r` (Visualizar) | `routers/executions.py` | `execution_logs` |
+| **Agentes → Alertas** | `agents.reports` | `r` (Visualizar Alertas) | `routers/reports.py` | `alerts`, `executions` |
+| **Agentes → Secrets Vault** | `agents.secrets` | `r` (Listar chaves), `rw` (Salvar) | `routers/system.py` | `agent_secrets` |
+| **Agentes → Config. IA** | `agents.llm` | `r` (Ver), `rw` (Alterar) | `routers/llm_config.py` | `system_config` |
 
 ---
 

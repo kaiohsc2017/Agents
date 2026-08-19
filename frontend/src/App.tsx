@@ -3,6 +3,7 @@ import Login from './components/Login'
 import AppLayout, { type Page } from './components/AppLayout'
 import ModuloLogs from './components/ModuloLogs'
 import { revokeSession } from './api/client'
+import agentsApi from './components/agents/agentsClient'
 import { authSessionFromToken } from './hooks/useAuthSession'
 import { ThemeProvider } from './theme/theme-context'
 
@@ -19,7 +20,16 @@ const Settings            = lazy(() => import('./components/Settings'))
 const Auditoria           = lazy(() => import('./components/Auditoria'))
 const AccessGroups        = lazy(() => import('./components/AccessGroups'))
 const Release             = lazy(() => import('./components/Release'))
-const AgentesPage         = lazy(() => import('./components/AgentesPage'))
+
+// ─── Componentes Nativos da Plataforma de Agentes IA ────────────────────────
+const AgentsDashboard     = lazy(() => import('./components/agents/AgentsDashboard'))
+const AgentsList          = lazy(() => import('./components/agents/AgentsList'))
+const AgentsServers       = lazy(() => import('./components/agents/AgentsServers'))
+const AgentsKnowledge     = lazy(() => import('./components/agents/AgentsKnowledge'))
+const AgentsLogs          = lazy(() => import('./components/agents/AgentsLogs'))
+const AgentsAlerts        = lazy(() => import('./components/agents/AgentsAlerts'))
+const AgentsSecrets       = lazy(() => import('./components/agents/AgentsSecrets'))
+const AgentsLlmSettings   = lazy(() => import('./components/agents/AgentsLlmSettings'))
 
 // ─── ErrorBoundary ─────────────────────────────────────────────────────────────
 class ErrorBoundary extends Component<
@@ -104,15 +114,6 @@ const LINK_RESOURCE: Partial<Record<Page, string>> = {
 
 const AGENTS_SUBPAGES: Page[] = ['agDashboard', 'agAgents', 'agServers', 'agKnowledge', 'agLogs', 'agAlerts', 'agSecrets', 'agLlm']
 
-const AGENTS_PAGE_TO_TAB: Record<string, string> = {
-  agDashboard: 'dashboard', agAgents: 'agents', agServers: 'servers', agKnowledge: 'knowledge',
-  agLogs: 'logs', agAlerts: 'reports', agSecrets: 'secrets', agLlm: 'llm',
-}
-const AGENTS_TAB_TO_PAGE: Record<string, Page> = {
-  dashboard: 'agDashboard', agents: 'agAgents', servers: 'agServers', knowledge: 'agKnowledge',
-  logs: 'agLogs', reports: 'agAlerts', secrets: 'agSecrets', llm: 'agLlm',
-}
-
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token'))
   const [username, setUsername] = useState<string>(() => localStorage.getItem('agentia_user') || localStorage.getItem('voipia_user') || '')
@@ -160,6 +161,22 @@ export default function App() {
     const rawHash = window.location.hash.replace('#', '').trim()
     if (rawHash !== page) window.location.hash = page
   }, [page])
+
+  // Polling de contagem de alertas da plataforma de agentes
+  useEffect(() => {
+    if (!token) return
+    const fetchAlerts = () => {
+      agentsApi
+        .get<{ id: string }[]>('/api/executions/alerts?limit=50')
+        .then(({ data }) => {
+          if (Array.isArray(data)) setAgentsAlertCount(data.length)
+        })
+        .catch(() => {})
+    }
+    fetchAlerts()
+    const interval = setInterval(fetchAlerts, 30_000)
+    return () => clearInterval(interval)
+  }, [token])
 
   const handleLogin = (t: string, user: string) => {
     setToken(t)
@@ -212,13 +229,16 @@ export default function App() {
                 {page === 'logs'         && <ModuloLogs />}
                 {page === 'accessGroups' && <AccessGroups />}
                 {page === 'release'      && <Release />}
-                {AGENTS_SUBPAGES.includes(page) && (
-                  <AgentesPage
-                    tab={AGENTS_PAGE_TO_TAB[page] ?? 'dashboard'}
-                    onTabChange={(t) => { const p = AGENTS_TAB_TO_PAGE[t]; if (p) navigateTo(p); }}
-                    onAlertCount={setAgentsAlertCount}
-                  />
-                )}
+
+                {/* Plataforma de Agentes IA Nativa */}
+                {page === 'agDashboard'  && <AgentsDashboard />}
+                {page === 'agAgents'     && <AgentsList canWrite={authSessionFromToken(token).hasWrite('agents.agents')} />}
+                {page === 'agServers'    && <AgentsServers canWrite={authSessionFromToken(token).hasWrite('agents.servers')} />}
+                {page === 'agKnowledge'  && <AgentsKnowledge canWrite={authSessionFromToken(token).hasWrite('agents.knowledge')} />}
+                {page === 'agLogs'       && <AgentsLogs />}
+                {page === 'agAlerts'     && <AgentsAlerts />}
+                {page === 'agSecrets'    && <AgentsSecrets canWrite={authSessionFromToken(token).hasWrite('agents.secrets')} />}
+                {page === 'agLlm'        && <AgentsLlmSettings canWrite={authSessionFromToken(token).hasWrite('agents.llm')} />}
               </ErrorBoundary>
             </Suspense>
 

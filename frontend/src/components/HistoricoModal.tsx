@@ -1,158 +1,180 @@
-import { useEffect, useState, useCallback } from 'react';
-import api from '../api/client';
-import type { NumberTest, TestResult, PageResponse } from '../api/types';
-import { STATUS_CLASS, formatDate, getPeriodRange } from './connectivityHelpers';
+import { useEffect, useState, useCallback } from 'react'
+import api from '../api/client'
+import type { NumberTest, TestResult, PageResponse } from '../api/types'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { X, History, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface HistoricoModalProps {
-  test: NumberTest;
-  onClose: () => void;
+  test: NumberTest
+  onClose: () => void
+}
+
+function formatDate(iso?: string) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
 }
 
 export function HistoricoModal({ test, onClose }: HistoricoModalProps) {
-  const [results, setResults] = useState<TestResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [activePeriod, setActivePeriod] = useState<'today' | 'week' | 'month' | 'custom'>('today');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [results, setResults] = useState<TestResult[]>([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
 
-  const load = useCallback((p = 0, period: typeof activePeriod = activePeriod, from = dateFrom, to = dateTo) => {
-    setLoading(true);
-    let fromVal = from, toVal = to;
-    if (period !== 'custom') {
-      const r = getPeriodRange(period as 'today' | 'week' | 'month');
-      fromVal = r.from; toVal = r.to;
-    }
-    const params = new URLSearchParams({ page: String(p), size: '20', numberTestId: String(test.id) });
-    if (fromVal) params.set('dateFrom', fromVal);
-    if (toVal) params.set('dateTo', toVal);
-    api.get<PageResponse<TestResult>>(`/test-results?${params}`)
-      .then(r => {
-        setResults(r.data.content ?? []);
-        setTotalPages(r.data.totalPages);
-        setPage(r.data.number);
-      })
-      .catch(err => console.error('Erro ao carregar histórico de testes:', err))
-      .finally(() => setLoading(false));
-  }, [test.id, activePeriod, dateFrom, dateTo]);
+  const load = useCallback(
+    (p = 0) => {
+      setLoading(true)
+      const params = new URLSearchParams({ page: String(p), size: '20', numberTestId: String(test.id) })
+      api
+        .get<PageResponse<TestResult>>(`/test-results?${params}`)
+        .then((r) => {
+          setResults(r.data.content ?? [])
+          setTotalPages(r.data.totalPages ?? 1)
+          setPage(r.data.number ?? 0)
+        })
+        .catch((err) => console.error('Erro ao carregar histórico de testes:', err))
+        .finally(() => setLoading(false))
+    },
+    [test.id]
+  )
 
-  useEffect(() => { load(0, 'today'); }, []);
+  useEffect(() => {
+    load(0)
+  }, [load])
 
-  const handlePeriod = (p: 'today' | 'week' | 'month') => {
-    setActivePeriod(p);
-    load(0, p, '', '');
-  };
-
-  const handleCustom = () => {
-    if (dateFrom && dateTo) {
-      setActivePeriod('custom');
-      load(0, 'custom', dateFrom, dateTo);
-    }
-  };
-
-  const successCount = results.filter(r => r.status === 'SUCESSO').length;
-  const failCount = results.filter(r => r.status !== 'SUCESSO').length;
+  const successCount = results.filter((r) => r.status === 'SUCESSO').length
 
   return (
-    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ maxWidth: 820, width: '95vw' }}>
-        <div className="modal-header">
-          <h2>📋 Histórico — {test.phoneNumber}</h2>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {test.businessUnit?.name} › {test.client?.name} › {test.operation?.name} › {test.segment?.name}
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="bg-card text-card-foreground border border-border/70 rounded-2xl shadow-2xl max-w-3xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-base font-bold text-foreground">Histórico de Testes: {test.phoneNumber}</h2>
+              <p className="text-[11px] text-muted-foreground">
+                {test.businessUnit?.name} › {test.client?.name} › {test.operation?.name} › {test.segment?.name}
+              </p>
+            </div>
           </div>
-          <button className="btn-close" onClick={onClose}>×</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <div className="modal-body" style={{ paddingTop: 8 }}>
 
-          {/* Filtros de período */}
-          <div className="flex gap-1" style={{ marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            {(['today', 'week', 'month'] as const).map(p => (
-              <button
-                key={p}
-                className={`btn btn-sm ${activePeriod === p ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => handlePeriod(p)}
-              >
-                {p === 'today' ? 'Hoje' : p === 'week' ? 'Esta semana' : 'Este mês'}
-              </button>
-            ))}
-            <div className="flex gap-1" style={{ alignItems: 'center', marginLeft: 8 }}>
-              <input type="datetime-local" className="form-input" style={{ width: 170, fontSize: '0.8rem', padding: '4px 8px' }}
-                value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-              <span style={{ color: 'var(--text-muted)' }}>→</span>
-              <input type="datetime-local" className="form-input" style={{ width: 170, fontSize: '0.8rem', padding: '4px 8px' }}
-                value={dateTo} onChange={e => setDateTo(e.target.value)} />
-              <button className="btn btn-ghost btn-sm" onClick={handleCustom}>Filtrar</button>
-            </div>
-          </div>
+        {/* Mini stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="shadow-xs border-border/70">
+            <CardContent className="p-3">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Resultados</span>
+              <div className="text-lg font-bold text-foreground">{results.length}</div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-xs border-border/70">
+            <CardContent className="p-3">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Sucesso</span>
+              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{successCount}</div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-xs border-border/70">
+            <CardContent className="p-3">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Falhas</span>
+              <div className="text-lg font-bold text-rose-500">{results.length - successCount}</div>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Resumo */}
-          {!loading && results.length > 0 && (
-            <div className="flex gap-1" style={{ marginBottom: 12 }}>
-              <div className="stat-card" style={{ flex: 1, padding: '10px 16px' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{results.length}</div>
-              </div>
-              <div className="stat-card" style={{ flex: 1, padding: '10px 16px' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sucesso</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#34c759' }}>{successCount}</div>
-              </div>
-              <div className="stat-card" style={{ flex: 1, padding: '10px 16px' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Falha</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ff6b6b' }}>{failCount}</div>
-              </div>
-              <div className="stat-card" style={{ flex: 1, padding: '10px 16px' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Taxa sucesso</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                  {results.length > 0 ? Math.round(successCount / results.length * 100) : 0}%
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tabela */}
+        {/* Table */}
+        <div className="border border-border/70 rounded-xl overflow-hidden">
           {loading ? (
-            <div className="loading-state"><div className="spinner" />Carregando histórico…</div>
+            <div className="p-8 text-center text-xs text-muted-foreground">Carregando histórico...</div>
           ) : (
-            <div className="table-wrapper" style={{ maxHeight: 340 }}>
-              <table>
-                <thead>
+            <table className="w-full text-left text-xs">
+              <thead className="bg-muted/40 text-muted-foreground font-semibold uppercase text-[10px] tracking-wider border-b border-border/60">
+                <tr>
+                  <th className="py-2.5 px-3">Data / Hora</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Código SIP</th>
+                  <th className="py-2.5 px-3 font-mono">Ordem</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {results.length === 0 ? (
                   <tr>
-                    <th>Data/Hora</th>
-                    <th>Status</th>
-                    <th>Código SIP</th>
-                    <th>Descrição SIP</th>
-                    <th>Ordem</th>
+                    <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                      Nenhum resultado registrado para este número.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {results.length === 0 ? (
-                    <tr><td colSpan={5} className="table-empty">Nenhum resultado neste período</td></tr>
-                  ) : results.map(r => (
-                    <tr key={r.id}>
-                      <td className="td-muted">{formatDate(r.executedAt)}</td>
-                      <td><span className={`badge ${STATUS_CLASS[r.status] ?? 'badge-gray'}`}>{r.status}</span></td>
-                      <td className="td-muted">{r.sipResponseCode ?? '—'}</td>
-                      <td className="td-muted">{r.sipResponseReason || '—'}</td>
-                      <td className="td-muted">{r.executionOrder}ª</td>
+                ) : (
+                  results.map((r) => (
+                    <tr key={r.id} className="hover:bg-muted/20">
+                      <td className="py-2 px-3 font-mono text-[11px] text-muted-foreground">
+                        {formatDate(r.executedAt)}
+                      </td>
+                      <td className="py-2 px-3">
+                        <Badge
+                          variant={r.status === 'SUCESSO' ? 'success' : 'destructive'}
+                          className="text-[10px] py-0"
+                        >
+                          {r.status}
+                        </Badge>
+                      </td>
+                      <td className="py-2 px-3 font-mono text-[11px] text-muted-foreground">
+                        {r.sipResponseCode ? `${r.sipResponseCode} ${r.sipResponseReason ?? ''}` : '—'}
+                      </td>
+                      <td className="py-2 px-3 font-mono text-muted-foreground">#{r.executionOrder}</td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {totalPages > 1 && (
-                <div className="pagination">
-                  <span className="pagination-info">Página {page + 1} de {totalPages}</span>
-                  <div className="pagination-btns">
-                    <button className="page-btn" disabled={page === 0} onClick={() => load(page - 1)}>‹</button>
-                    <button className="page-btn" disabled={page >= totalPages - 1} onClick={() => load(page + 1)}>›</button>
-                  </div>
-                </div>
-              )}
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           )}
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-xs text-muted-foreground">
+            Página {page + 1} de {totalPages || 1}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="xs"
+              disabled={page === 0}
+              onClick={() => load(page - 1)}
+              className="h-8"
+            >
+              <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+              Anterior
+            </Button>
+            <Button
+              variant="outline"
+              size="xs"
+              disabled={page >= totalPages - 1}
+              onClick={() => load(page + 1)}
+              className="h-8"
+            >
+              Próxima
+              <ChevronRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

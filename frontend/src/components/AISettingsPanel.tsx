@@ -1,83 +1,102 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import api from '../api/client';
-import type { AiModelPricing, PricingFetchResult } from '../api/types';
+import React, { useEffect, useState, useCallback } from 'react'
+import api from '../api/client'
+import type { AiModelPricing, PricingFetchResult } from '../api/types'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import {
+  Sparkles,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Trash2,
+  KeyRound,
+  Coins,
+  RefreshCw,
+  CheckCircle2,
+  Save,
+  X,
+  AlertTriangle,
+  GripVertical,
+} from 'lucide-react'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface ProviderDef {
-  id: string;
-  name: string;
-  capabilities: string[];
-  hasKey: boolean;
+  id: string
+  name: string
+  capabilities: string[]
+  hasKey: boolean
 }
 
 interface ModelInfo {
-  id: string;
-  displayName: string;
-  description: string;
-  tags: string[];
-  capabilities: string[];
+  id: string
+  displayName: string
+  description: string
+  tags: string[]
+  capabilities: string[]
 }
 
 interface ChainEntry {
-  id?: number;
-  capability: string;
-  priority: number;
-  provider: string;
-  modelId: string;
-  isEnabled: boolean;
+  id?: number
+  capability: string
+  priority: number
+  provider: string
+  modelId: string
+  isEnabled: boolean
 }
 
-type Capability = 'STT' | 'LLM' | 'TTS';
+type Capability = 'STT' | 'LLM' | 'TTS'
 
 const CAPABILITIES: { id: Capability; icon: string; label: string; desc: string }[] = [
-  { id: 'STT', icon: '🎙️', label: 'STT — Transcrição de voz',    desc: 'Converte áudio do chamador em texto' },
-  { id: 'LLM', icon: '🧠', label: 'LLM — Raciocínio e resposta', desc: 'Processa o texto e gera a resposta' },
-  { id: 'TTS', icon: '🔊', label: 'TTS — Síntese de voz',         desc: 'Converte a resposta em áudio para o chamador' },
-];
+  { id: 'STT', icon: '🎙️', label: 'STT — Transcrição de Voz', desc: 'Converte áudio do chamador em texto' },
+  { id: 'LLM', icon: '🧠', label: 'LLM — Raciocínio e Resposta', desc: 'Processa o texto e gera a resposta contextual' },
+  { id: 'TTS', icon: '🔊', label: 'TTS — Síntese de Voz', desc: 'Converte a resposta em áudio de alta fidelidade' },
+]
 
-const TAG_LABELS: Record<string, { label: string; cls: string }> = {
-  speed: { label: '⚡ Rápido',             cls: 'badge-success' },
-  deep:  { label: '🔍 Raciocínio profundo', cls: 'badge-info'    },
-  voice: { label: '🎤 Voz expressiva',      cls: 'badge-accent'  },
-  cost:  { label: '💰 Econômico',           cls: 'badge-warning' },
-  priv:  { label: '🔒 Privado/local',       cls: 'badge-gray'    },
-};
+const TAG_LABELS: Record<string, { label: string; variant: 'success' | 'info' | 'warning' | 'outline' }> = {
+  speed: { label: '⚡ Rápido', variant: 'success' },
+  deep: { label: '🔍 Raciocínio Profundo', variant: 'info' },
+  voice: { label: '🎤 Voz Expressiva', variant: 'info' },
+  cost: { label: '💰 Econômico', variant: 'warning' },
+  priv: { label: '🔒 Privado/Local', variant: 'outline' },
+}
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 interface AISettingsPanelProps {
-  open: boolean;
-  onToggle: () => void;
+  open: boolean
+  onToggle: () => void
 }
 
 export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ open, onToggle }) => {
-  const [providers, setProviders] = useState<ProviderDef[]>([]);
-  const [chains, setChains]       = useState<Record<Capability, ChainEntry[]>>({ STT: [], LLM: [], TTS: [] });
-  const [saving, setSaving]       = useState(false);
-  const [toast, setToast]         = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [providers, setProviders] = useState<ProviderDef[]>([])
+  const [chains, setChains] = useState<Record<Capability, ChainEntry[]>>({ STT: [], LLM: [], TTS: [] })
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   // Modal
-  const [modalOpen, setModalOpen]         = useState(false);
-  const [modalCap, setModalCap]           = useState<Capability>('LLM');
-  const [selProvider, setSelProvider]     = useState<ProviderDef | null>(null);
-  const [models, setModels]               = useState<ModelInfo[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(false);
-  const [selModel, setSelModel]           = useState<ModelInfo | null>(null);
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalCap, setModalCap] = useState<Capability>('LLM')
+  const [selProvider, setSelProvider] = useState<ProviderDef | null>(null)
+  const [models, setModels] = useState<ModelInfo[]>([])
+  const [modelsLoading, setModelsLoading] = useState(false)
+  const [selModel, setSelModel] = useState<ModelInfo | null>(null)
 
   // Key editing
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [keyInput, setKeyInput]     = useState('');
-  const [savingKey, setSavingKey]   = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [keyInput, setKeyInput] = useState('')
+  const [savingKey, setSavingKey] = useState(false)
 
-  // Preço de modelos (Custos IA) — busca automática diária às 02:00 + edição manual
-  const [pricing, setPricing]             = useState<AiModelPricing[]>([]);
-  const [editingPrice, setEditingPrice]   = useState<string | null>(null);
-  const [priceInInput, setPriceInInput]   = useState('');
-  const [priceOutInput, setPriceOutInput] = useState('');
-  const [savingPrice, setSavingPrice]     = useState(false);
-  const [syncing, setSyncing]             = useState(false);
-  const [syncResults, setSyncResults]     = useState<PricingFetchResult[] | null>(null);
+  // Preço de modelos (Custos IA)
+  const [pricing, setPricing] = useState<AiModelPricing[]>([])
+  const [editingPrice, setEditingPrice] = useState<string | null>(null)
+  const [priceInInput, setPriceInInput] = useState('')
+  const [priceOutInput, setPriceOutInput] = useState('')
+  const [savingPrice, setSavingPrice] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResults, setSyncResults] = useState<PricingFetchResult[] | null>(null)
 
   // ── Carregar ────────────────────────────────────────────────────────────────
 
@@ -87,641 +106,672 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ open, onToggle
         api.get<ProviderDef[]>('/ai/providers'),
         api.get<ChainEntry[]>('/ai/chain'),
         api.get<AiModelPricing[]>('/ai/model-pricing'),
-      ]);
-      setProviders(provRes.data);
-      const grouped: Record<Capability, ChainEntry[]> = { STT: [], LLM: [], TTS: [] };
-      chainRes.data.forEach(e => {
-        const cap = e.capability as Capability;
-        if (grouped[cap]) grouped[cap].push(e);
-      });
-      setChains(grouped);
-      setPricing(pricingRes.data);
+      ])
+      setProviders(provRes.data)
+      const grouped: Record<Capability, ChainEntry[]> = { STT: [], LLM: [], TTS: [] }
+      chainRes.data.forEach((e) => {
+        const cap = e.capability as Capability
+        if (grouped[cap]) grouped[cap].push(e)
+      })
+      setChains(grouped)
+      setPricing(pricingRes.data)
     } catch {
-      showToast('Erro ao carregar configuração de IA', 'error');
+      showToast('Erro ao carregar configuração de IA', 'error')
     }
-  }, []);
+  }, [])
 
-  useEffect(() => { if (open) loadAll(); }, [open, loadAll]);
+  useEffect(() => {
+    if (open) loadAll()
+  }, [open, loadAll])
 
   // ── Salvar chains ───────────────────────────────────────────────────────────
 
   const saveChains = async () => {
-    setSaving(true);
+    setSaving(true)
     try {
       await Promise.all(
-        (['STT', 'LLM', 'TTS'] as Capability[]).map(cap =>
-          api.put(`/ai/chain/${cap}`, chains[cap].map(e => ({ provider: e.provider, modelId: e.modelId })))
+        (['STT', 'LLM', 'TTS'] as Capability[]).map((cap) =>
+          api.put(`/ai/chain/${cap}`, chains[cap].map((e) => ({ provider: e.provider, modelId: e.modelId })))
         )
-      );
-      showToast('Chains salvas · ai-agent aplica na próxima chamada', 'success');
+      )
+      showToast('Chains salvas com sucesso · ai-agent aplicará na próxima chamada', 'success')
     } catch {
-      showToast('Erro ao salvar chains', 'error');
+      showToast('Erro ao salvar chains de IA', 'error')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   // ── API Key ─────────────────────────────────────────────────────────────────
 
   const saveKey = async (providerId: string) => {
-    if (!keyInput.trim()) return;
-    setSavingKey(true);
+    if (!keyInput.trim()) return
+    setSavingKey(true)
     try {
-      await api.put(`/ai/providers/${providerId}/key`, { apiKey: keyInput.trim() });
-      setEditingKey(null);
-      setKeyInput('');
-      await loadAll();
-      showToast('Key salva · modelos disponíveis', 'success');
+      await api.put(`/ai/providers/${providerId}/key`, { apiKey: keyInput.trim() })
+      setEditingKey(null)
+      setKeyInput('')
+      await loadAll()
+      showToast('Chave salva com sucesso · modelos desbloqueados', 'success')
     } catch {
-      showToast('Erro ao salvar key', 'error');
+      showToast('Erro ao salvar chave de API', 'error')
     } finally {
-      setSavingKey(false);
+      setSavingKey(false)
     }
-  };
+  }
 
-  // ── Preço de modelos (Custos IA) ────────────────────────────────────────────
+  // ── Preço de modelos ────────────────────────────────────────────────────────
 
   const startEditPrice = (p: AiModelPricing) => {
-    setEditingPrice(p.modelId);
-    setPriceInInput(String(p.pricePerMillionInputUsd));
-    setPriceOutInput(String(p.pricePerMillionOutputUsd));
-  };
+    setEditingPrice(p.modelId)
+    setPriceInInput(String(p.pricePerMillionInputUsd))
+    setPriceOutInput(String(p.pricePerMillionOutputUsd))
+  }
 
   const savePrice = async (modelId: string) => {
-    const input = Number(priceInInput);
-    const output = Number(priceOutInput);
+    const input = Number(priceInInput)
+    const output = Number(priceOutInput)
     if (!Number.isFinite(input) || input < 0 || !Number.isFinite(output) || output < 0) {
-      showToast('Preço inválido — use um número maior ou igual a zero', 'error');
-      return;
+      showToast('Preço inválido — use um número maior ou igual a zero', 'error')
+      return
     }
-    setSavingPrice(true);
+    setSavingPrice(true)
     try {
       await api.put(`/ai/model-pricing/${modelId}`, {
         pricePerMillionInputUsd: input,
         pricePerMillionOutputUsd: output,
-      });
-      setEditingPrice(null);
-      await loadAll();
-      showToast('Preço atualizado manualmente', 'success');
+      })
+      setEditingPrice(null)
+      await loadAll()
+      showToast('Preço atualizado manualmente', 'success')
     } catch {
-      showToast('Erro ao salvar preço', 'error');
+      showToast('Erro ao salvar preço', 'error')
     } finally {
-      setSavingPrice(false);
+      setSavingPrice(false)
     }
-  };
+  }
 
   const syncPricesNow = async () => {
-    setSyncing(true);
-    setSyncResults(null);
+    setSyncing(true)
+    setSyncResults(null)
     try {
-      const res = await api.post<PricingFetchResult[]>('/ai/model-pricing/sync-now', {});
-      setSyncResults(res.data);
-      await loadAll();
-      const failures = res.data.filter(r => !r.success).length;
+      const res = await api.post<PricingFetchResult[]>('/ai/model-pricing/sync-now', {})
+      setSyncResults(res.data)
+      await loadAll()
+      const failures = res.data.filter((r) => !r.success).length
       if (failures > 0) {
-        showToast(`Busca concluída com ${failures} falha(s) — preço anterior mantido`, 'error');
+        showToast(`Busca concluída com ${failures} falha(s) — preço anterior mantido`, 'error')
       } else {
-        showToast('Preços atualizados a partir da página da Google', 'success');
+        showToast('Preços atualizados com sucesso', 'success')
       }
     } catch {
-      showToast('Erro ao disparar a busca de preços', 'error');
+      showToast('Erro ao sincronizar preços de IA', 'error')
     } finally {
-      setSyncing(false);
+      setSyncing(false)
     }
-  };
+  }
 
   // ── Modal ───────────────────────────────────────────────────────────────────
 
-  const openModal = (cap: Capability) => {
-    setModalCap(cap);
-    setSelProvider(null);
-    setSelModel(null);
-    setModels([]);
-    setModalOpen(true);
-  };
+  const openAddModal = (cap: Capability) => {
+    setModalCap(cap)
+    setSelProvider(null)
+    setSelModel(null)
+    setModels([])
+    setModalOpen(true)
+  }
 
   const selectProvider = async (prov: ProviderDef) => {
-    setSelProvider(prov);
-    setSelModel(null);
-    setModels([]);
-    setModelsLoading(true);
+    setSelProvider(prov)
+    setSelModel(null)
+    setModels([])
+    setModelsLoading(true)
     try {
-      const res = await api.get<ModelInfo[]>(`/ai/providers/${prov.id}/models?cap=${modalCap}`);
-      setModels(res.data);
-      if (res.data.length > 0) setSelModel(res.data[0]);
+      const res = await api.get<ModelInfo[]>(`/ai/providers/${prov.id}/models?cap=${modalCap}`)
+      setModels(res.data)
+      if (res.data.length > 0) setSelModel(res.data[0])
     } catch {
-      setModels([]);
+      setModels([])
     } finally {
-      setModelsLoading(false);
+      setModelsLoading(false)
     }
-  };
+  }
 
   const confirmAdd = () => {
-    if (!selProvider || !selModel) return;
-    const current = chains[modalCap];
-    setChains(prev => ({
+    if (!selProvider || !selModel) return
+    const current = chains[modalCap]
+    setChains((prev) => ({
       ...prev,
-      [modalCap]: [...prev[modalCap], {
-        capability: modalCap,
-        priority: current.length + 1,
-        provider: selProvider.id,
-        modelId: selModel.id,
-        isEnabled: true,
-      }],
-    }));
-    setModalOpen(false);
-  };
+      [modalCap]: [
+        ...prev[modalCap],
+        {
+          capability: modalCap,
+          priority: current.length + 1,
+          provider: selProvider.id,
+          modelId: selModel.id,
+          isEnabled: true,
+        },
+      ],
+    }))
+    setModalOpen(false)
+  }
 
   const removeEntry = (cap: Capability, idx: number) => {
-    setChains(prev => ({
+    setChains((prev) => ({
       ...prev,
       [cap]: prev[cap].filter((_, i) => i !== idx).map((e, i) => ({ ...e, priority: i + 1 })),
-    }));
-  };
+    }))
+  }
 
   const showToast = (msg: string, type: 'success' | 'error') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
-  const providerName = (id: string) => providers.find(p => p.id === id)?.name ?? id;
-
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  const providerName = (id: string) => providers.find((p) => p.id === id)?.name ?? id
 
   return (
     <>
-      {/* Accordion — mesmo padrão das seções Jira/Zabbix */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 0 }}>
-
-        {/* Header */}
-        <button
+      <Card className="border-border/70 shadow-xs overflow-hidden transition-all duration-200">
+        {/* Cabeçalho */}
+        <div
           onClick={onToggle}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center',
-            gap: 12, padding: '16px 20px', background: 'none',
-            border: 'none', cursor: 'pointer', textAlign: 'left',
-            color: 'var(--text-primary)',
-          }}
+          className="w-full flex items-center justify-between p-4 bg-card hover:bg-muted/40 transition-colors cursor-pointer select-none"
         >
-          <span style={{ fontSize: '1.4rem' }}>🤖</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-              Inteligência Artificial
+          <div className="flex items-center gap-3.5">
+            <div className="h-9 w-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-base shadow-2xs shrink-0">
+              <Sparkles className="h-4 w-4" />
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
-              Provedores e modelos para STT, LLM e TTS — com fallback automático entre provedores
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm text-foreground tracking-tight">Inteligência Artificial</span>
+                <Badge variant="outline" className="text-[10px] py-0 h-4 font-mono text-purple-600 dark:text-purple-400 border-purple-500/30 bg-purple-500/5">
+                  ai-agent
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Provedores e modelos para STT, LLM e TTS com fallback automático em cascata
+              </div>
             </div>
           </div>
-          <span style={{
-            fontSize: '0.65rem', padding: '2px 8px', borderRadius: 6, fontWeight: 500,
-            background: 'rgba(99,102,241,0.08)', color: 'var(--clr-primary)',
-            border: '1px solid rgba(99,102,241,0.2)',
-          }}>ai-agent</span>
-          <span style={{
-            color: 'var(--text-muted)', transition: 'transform .2s',
-            display: 'inline-block', transform: open ? 'rotate(180deg)' : 'rotate(0)',
-          }}>▾</span>
-        </button>
+
+          <div className="flex items-center gap-2">
+            {open ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
+            )}
+          </div>
+        </div>
 
         {open && (
-          <div style={{ padding: '0 20px 20px', borderTop: '1px solid var(--border-glass)' }}>
+          <CardContent className="p-5 pt-0 border-t border-border/50 bg-card/40 space-y-6">
+            {/* ── Capability Chains ── */}
+            <div className="space-y-6 pt-3">
+              {CAPABILITIES.map((cap) => {
+                const entries = chains[cap.id] ?? []
+                return (
+                  <div key={cap.id} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{cap.icon}</span>
+                      <span className="font-semibold text-xs text-foreground">{cap.label}</span>
+                      <span className="text-xs text-muted-foreground">— {cap.desc}</span>
+                    </div>
 
-            {/* ── Capability chains ── */}
-            {CAPABILITIES.map(cap => {
-              const entries = chains[cap.id] ?? [];
-              return (
-                <div key={cap.id} style={{ marginTop: 18 }}>
-                  {/* Label da capability */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    marginBottom: 10,
-                  }}>
-                    <span style={{ fontSize: '1rem' }}>{cap.icon}</span>
-                    <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                      {cap.label}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      — {cap.desc}
-                    </span>
-                  </div>
-
-                  {/* Entradas da chain */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
-                    {entries.length === 0 && (
-                      <div style={{
-                        padding: '10px 14px', borderRadius: 8,
-                        background: 'rgba(148,163,184,0.08)',
-                        border: '1px dashed var(--border-glass)',
-                        fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center',
-                      }}>
-                        Nenhum provedor configurado
-                      </div>
-                    )}
-                    {entries.map((entry, idx) => (
-                      <div key={`${entry.provider}-${entry.modelId}`} style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '10px 14px', borderRadius: 8,
-                        background: idx === 0
-                          ? 'rgba(99,102,241,0.05)'
-                          : 'var(--bg-input)',
-                        border: idx === 0
-                          ? '1px solid rgba(99,102,241,0.25)'
-                          : '1px solid var(--border-glass)',
-                      }}>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'grab' }}>⠿</span>
-                        <span style={{
-                          fontSize: '0.7rem', fontWeight: 600,
-                          padding: '1px 7px', borderRadius: 20, minWidth: 20, textAlign: 'center',
-                          background: idx === 0 ? 'rgba(99,102,241,0.12)' : 'rgba(148,163,184,0.12)',
-                          color: idx === 0 ? 'var(--clr-primary)' : 'var(--text-secondary)',
-                        }}>{idx + 1}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                            {providerName(entry.provider)}
-                          </div>
-                          <div style={{
-                            fontSize: '0.75rem', color: 'var(--text-muted)',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            fontFamily: '"JetBrains Mono","Fira Code",monospace',
-                          }}>
-                            {entry.modelId}
-                          </div>
+                    {/* Entradas da chain */}
+                    <div className="space-y-2">
+                      {entries.length === 0 ? (
+                        <div className="p-3.5 rounded-xl border border-dashed border-border text-center text-xs text-muted-foreground bg-muted/20">
+                          Nenhum provedor configurado para esta cadeia
                         </div>
-                        <span className={`badge ${idx === 0 ? 'badge-info' : 'badge-gray'}`}>
-                          {idx === 0 ? 'primário' : `fallback ${idx}`}
-                        </span>
-                        <button
-                          onClick={() => removeEntry(cap.id, idx)}
-                          style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            color: 'var(--text-muted)', fontSize: '1rem',
-                            padding: '0 2px', lineHeight: 1,
-                          }}
-                          title="Remover"
-                        >×</button>
-                      </div>
-                    ))}
+                      ) : (
+                        entries.map((entry, idx) => (
+                          <div
+                            key={`${entry.provider}-${entry.modelId}`}
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                              idx === 0
+                                ? 'bg-primary/5 border-primary/25 shadow-2xs'
+                                : 'bg-card border-border/70 hover:border-border'
+                            }`}
+                          >
+                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0 cursor-grab" />
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] h-5 px-1.5 font-bold ${
+                                idx === 0 ? 'bg-primary/10 text-primary border-primary/30' : 'text-muted-foreground'
+                              }`}
+                            >
+                              {idx + 1}
+                            </Badge>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-xs text-foreground">
+                                {providerName(entry.provider)}
+                              </div>
+                              <div className="text-[11px] font-mono text-muted-foreground truncate">
+                                {entry.modelId}
+                              </div>
+                            </div>
+
+                            <Badge
+                              variant={idx === 0 ? 'default' : 'secondary'}
+                              className="text-[10px] py-0 h-4"
+                            >
+                              {idx === 0 ? 'primário' : `fallback ${idx}`}
+                            </Badge>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeEntry(cap.id, idx)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                              title="Remover"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAddModal(cap.id)}
+                      className="w-full text-xs h-8 border-dashed hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Adicionar Provedor de Fallback ({cap.id})
+                    </Button>
                   </div>
+                )
+              })}
+            </div>
 
-                  {/* Botão adicionar */}
-                  <button
-                    onClick={() => openModal(cap.id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      width: '100%', padding: '8px',
-                      border: '1px dashed var(--border-glass)',
-                      borderRadius: 8, background: 'none',
-                      cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-secondary)',
-                      transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-input)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                  >
-                    + Adicionar provedor de fallback
-                  </button>
-
-                  {/* Divider entre capabilities */}
-                  {cap.id !== 'TTS' && (
-                    <div style={{ height: 1, background: 'var(--border-glass)', margin: '18px 0 0' }} />
-                  )}
-                </div>
-              );
-            })}
-
-            {/* ── Botão salvar chains ── */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-glass)' }}>
-              <button
-                className="btn btn-primary btn-sm"
+            {/* Salvar Chains */}
+            <div className="flex justify-end pt-3 border-t border-border/50">
+              <Button
+                variant="default"
+                size="sm"
                 onClick={saveChains}
                 disabled={saving}
+                className="text-xs h-8 font-semibold shadow-xs"
               >
                 {saving ? (
-                  <><span className="spinner" style={{ width: 14, height: 14, display: 'inline-block', marginRight: 6, verticalAlign: 'middle' }} />Salvando…</>
-                ) : 'Salvar chains'}
-              </button>
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Salvando Chains...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3.5 w-3.5 mr-1.5" />
+                    Salvar Chains de IA
+                  </>
+                )}
+              </Button>
             </div>
 
             {/* ── API Keys ── */}
-            <div style={{ marginTop: 24 }}>
-              <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                🔑 API Keys dos provedores
-                <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
-                  — necessária para listar modelos
-                </span>
+            <div className="space-y-3 pt-3 border-t border-border/50">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-xs text-foreground">Chaves de API dos Provedores</span>
+                <span className="text-xs text-muted-foreground">— necessária para descoberta de modelos</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {providers.map(prov => (
-                  <div key={prov.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 14px', borderRadius: 8,
-                    background: 'var(--bg-input)', border: '1px solid var(--border-glass)',
-                  }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem', width: 130, flexShrink: 0 }}>
-                      {prov.name}
-                    </span>
 
-                    {prov.id === 'local' ? (
-                      <span className="badge badge-success">✓ local — sem API key</span>
-                    ) : editingKey === prov.id ? (
-                      <>
-                        <input
-                          type="password"
-                          value={keyInput}
-                          onChange={e => setKeyInput(e.target.value)}
-                          placeholder="Cole a API key aqui…"
-                          className="form-input"
-                          style={{ flex: 1, padding: '6px 12px', fontSize: '0.8rem', fontFamily: '"JetBrains Mono","Fira Code",monospace' }}
-                          onKeyDown={e => e.key === 'Enter' && saveKey(prov.id)}
-                          autoFocus
-                        />
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => saveKey(prov.id)}
-                          disabled={savingKey}
-                        >{savingKey ? '…' : 'Salvar'}</button>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => { setEditingKey(null); setKeyInput(''); }}
-                        >Cancelar</button>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ flex: 1, fontSize: '0.8rem' }}>
-                          {prov.hasKey
-                            ? <span className="badge badge-success">✓ Key configurada</span>
-                            : <span className="badge badge-gray">Sem key — modelos indisponíveis</span>
-                          }
-                        </span>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => { setEditingKey(prov.id); setKeyInput(''); }}
-                        >Editar</button>
-                      </>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {providers.map((prov) => (
+                  <div
+                    key={prov.id}
+                    className="p-3 rounded-xl bg-card border border-border/70 flex flex-col gap-2 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-foreground">{prov.name}</span>
+                      {prov.id === 'local' ? (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px]">
+                          ✓ Local
+                        </Badge>
+                      ) : prov.hasKey ? (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px]">
+                          ✓ Configurada
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">
+                          Sem chave
+                        </Badge>
+                      )}
+                    </div>
+
+                    {prov.id !== 'local' && (
+                      editingKey === prov.id ? (
+                        <div className="flex gap-1.5 pt-1">
+                          <Input
+                            type="password"
+                            value={keyInput}
+                            onChange={(e) => setKeyInput(e.target.value)}
+                            placeholder="Cole a API key aqui..."
+                            className="h-8 text-xs font-mono flex-1"
+                            autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && saveKey(prov.id)}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => saveKey(prov.id)}
+                            disabled={savingKey}
+                            className="h-8 text-xs px-2.5"
+                          >
+                            {savingKey ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'Salvar'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setEditingKey(null); setKeyInput('') }}
+                            className="h-8 text-xs px-2"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { setEditingKey(prov.id); setKeyInput('') }}
+                            className="h-7 text-xs px-2.5"
+                          >
+                            {prov.hasKey ? 'Alterar Chave' : 'Configurar Chave'}
+                          </Button>
+                        </div>
+                      )
                     )}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* ── Preço de modelos (Custos IA) ── */}
-            <div style={{ marginTop: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                  💲 Preço de tokens (Custos IA)
-                </span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
-                  — usado para estimar o custo de cada chamada (URA e Insights)
-                </span>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-                Buscado automaticamente todo dia às 02:00 na página pública de preços da Google —
-                não é uma API oficial, então em caso de falha o último preço válido é mantido e um
-                alerta é enviado por Telegram (ver Documentação → Insights). Corrija manualmente
-                aqui se desconfiar do valor.
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {pricing.map(p => (
-                  <div key={p.modelId} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 14px', borderRadius: 8,
-                    background: 'var(--bg-input)', border: '1px solid var(--border-glass)',
-                    flexWrap: 'wrap',
-                  }}>
-                    <span style={{
-                      fontWeight: 600, fontSize: '0.8rem', minWidth: 220, flexShrink: 0,
-                      fontFamily: '"JetBrains Mono","Fira Code",monospace',
-                    }}>
-                      {p.modelId}
-                    </span>
-
-                    {editingPrice === p.modelId ? (
-                      <>
-                        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          Input ($/1M)
-                          <input
-                            type="number" min="0" step="0.01"
-                            value={priceInInput}
-                            onChange={e => setPriceInInput(e.target.value)}
-                            className="form-input"
-                            style={{ width: 90, marginLeft: 6, padding: '4px 8px', fontSize: '0.8rem' }}
-                          />
-                        </label>
-                        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          Output ($/1M)
-                          <input
-                            type="number" min="0" step="0.01"
-                            value={priceOutInput}
-                            onChange={e => setPriceOutInput(e.target.value)}
-                            className="form-input"
-                            style={{ width: 90, marginLeft: 6, padding: '4px 8px', fontSize: '0.8rem' }}
-                          />
-                        </label>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => savePrice(p.modelId)}
-                          disabled={savingPrice}
-                        >{savingPrice ? '…' : 'Salvar'}</button>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => setEditingPrice(null)}
-                        >Cancelar</button>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '0.8rem' }}>
-                          Input: <strong>${p.pricePerMillionInputUsd.toFixed(2)}</strong> · Output: <strong>${p.pricePerMillionOutputUsd.toFixed(2)}</strong>
-                        </span>
-                        <span className={`badge ${p.updatedBy === 'auto-fetch' ? 'badge-info' : 'badge-gray'}`} style={{ fontSize: '0.65rem' }}>
-                          {p.updatedBy === 'auto-fetch' ? '🤖 busca automática' : `✍️ manual — ${p.updatedBy ?? '?'}`}
-                        </span>
-                        {p.updatedAt && (
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            {new Date(p.updatedAt).toLocaleString('pt-BR')}
-                          </span>
-                        )}
-                        <div style={{ flex: 1 }} />
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => startEditPrice(p)}
-                        >Editar</button>
-                      </>
-                    )}
+            {/* ── Preço de Modelos ── */}
+            <div className="space-y-3 pt-3 border-t border-border/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-amber-500" />
+                    <span className="font-semibold text-xs text-foreground">Tabela de Preços por Token (Custos IA)</span>
                   </div>
-                ))}
-                {pricing.length === 0 && (
-                  <div style={{
-                    padding: '10px 14px', borderRadius: 8,
-                    background: 'rgba(148,163,184,0.08)',
-                    border: '1px dashed var(--border-glass)',
-                    fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center',
-                  }}>
-                    Nenhum modelo com preço cadastrado ainda
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 10 }}>
-                {syncResults && syncResults.some(r => !r.success) && (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--clr-danger)' }}>
-                    {syncResults.filter(r => !r.success).map(r => `${r.modelId}: ${r.failureReason}`).join(' · ')}
-                  </span>
-                )}
-                <button
-                  className="btn btn-ghost btn-sm"
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Utilizado para precificar e monitorar chamadas em tempo real. Atualização diária automatizada.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={syncPricesNow}
                   disabled={syncing}
+                  className="text-xs h-8 shrink-0"
                 >
-                  {syncing ? (
-                    <><span className="spinner" style={{ width: 14, height: 14, display: 'inline-block', marginRight: 6, verticalAlign: 'middle' }} />Buscando…</>
-                  ) : '🔄 Buscar preço agora'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Modal: selecionar provedor + modelo ── */}
-      {modalOpen && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
-          zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '1rem', backdropFilter: 'blur(4px)',
-        }}>
-          <div className="card" style={{ width: '100%', maxWidth: 520, padding: 0 }}>
-
-            {/* Modal header */}
-            <div className="card-header" style={{ padding: '16px 20px' }}>
-              <span className="card-title">
-                Adicionar provedor — {modalCap}
-              </span>
-              <button
-                onClick={() => setModalOpen(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >×</button>
-            </div>
-
-            <div style={{ padding: '16px 20px' }}>
-
-              {/* Passo 1 — Provedor */}
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 10 }}>
-                1. Escolha o provedor
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
-                {providers.filter(p => p.capabilities.includes(modalCap)).map(prov => {
-                  const disabled = !prov.hasKey && prov.id !== 'local';
-                  const selected = selProvider?.id === prov.id;
-                  return (
-                    <div
-                      key={prov.id}
-                      onClick={() => !disabled && selectProvider(prov)}
-                      style={{
-                        border: `1px solid ${selected ? 'var(--clr-primary)' : 'var(--border-glass)'}`,
-                        background: selected ? 'rgba(99,102,241,0.06)' : 'var(--bg-input)',
-                        borderRadius: 8, padding: '10px 12px',
-                        cursor: disabled ? 'not-allowed' : 'pointer',
-                        opacity: disabled ? .45 : 1,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{prov.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{prov.capabilities.join(' · ')}</div>
-                      <div style={{ marginTop: 5 }}>
-                        {prov.id === 'local'
-                          ? <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>✓ local</span>
-                          : prov.hasKey
-                            ? <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>✓ key configurada</span>
-                            : <span className="badge badge-gray" style={{ fontSize: '0.65rem' }}>⚠ sem key</span>
-                        }
-                      </div>
-                    </div>
-                  );
-                })}
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Atualizando...' : 'Atualizar Preços'}
+                </Button>
               </div>
 
-              {/* Passo 2 — Modelo */}
-              {(selProvider || modelsLoading) && (
-                <>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 10 }}>
-                    2. Selecione o modelo
+              <div className="divide-y divide-border/50 rounded-xl border border-border/70 overflow-hidden bg-card">
+                {pricing.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-muted-foreground">
+                    Nenhum modelo precificado cadastrado
                   </div>
-                  <div style={{
-                    border: '1px solid var(--border-glass)', borderRadius: 8,
-                    overflow: 'hidden', maxHeight: 220, overflowY: 'auto', marginBottom: 8,
-                  }}>
+                ) : (
+                  pricing.map((p) => (
+                    <div key={p.modelId} className="p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="min-w-[200px]">
+                        <span className="font-mono font-medium text-foreground text-[11px]">{p.modelId}</span>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                          <Badge variant="outline" className="text-[9px] py-0 h-3.5">
+                            {p.updatedBy === 'auto-fetch' ? '🤖 Automático' : `✍️ ${p.updatedBy ?? 'Manual'}`}
+                          </Badge>
+                          {p.updatedAt && (
+                            <span>{new Date(p.updatedAt).toLocaleString('pt-BR')}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {editingPrice === p.modelId ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-muted-foreground">In ($/1M):</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={priceInInput}
+                              onChange={(e) => setPriceInInput(e.target.value)}
+                              className="h-7 w-20 text-xs font-mono"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-muted-foreground">Out ($/1M):</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={priceOutInput}
+                              onChange={(e) => setPriceOutInput(e.target.value)}
+                              className="h-7 w-20 text-xs font-mono"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => savePrice(p.modelId)}
+                            disabled={savingPrice}
+                            className="h-7 text-xs px-2"
+                          >
+                            {savingPrice ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'OK'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingPrice(null)}
+                            className="h-7 text-xs px-2"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-4">
+                          <div className="font-mono text-xs">
+                            In: <strong>${p.pricePerMillionInputUsd.toFixed(2)}</strong> / Out: <strong>${p.pricePerMillionOutputUsd.toFixed(2)}</strong>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditPrice(p)}
+                            className="h-7 text-xs px-2.5 text-muted-foreground hover:text-foreground"
+                          >
+                            Editar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {syncResults && syncResults.some((r) => !r.success) && (
+                <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>
+                    {syncResults.filter((r) => !r.success).map((r) => `${r.modelId}: ${r.failureReason}`).join(' • ')}
+                  </span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* ── Modal: Selecionar Provedor + Modelo ── */}
+      {modalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false) }}
+        >
+          <div className="w-full max-w-lg bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between p-4 border-b border-border/70 bg-card/60">
+              <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                Adicionar Provedor à Chain ({modalCap})
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 rounded-lg text-muted-foreground hover:text-foreground"
+                onClick={() => setModalOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Passo 1 */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                  1. Escolha o Provedor
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {providers
+                    .filter((p) => p.capabilities.includes(modalCap))
+                    .map((prov) => {
+                      const disabled = !prov.hasKey && prov.id !== 'local'
+                      const selected = selProvider?.id === prov.id
+                      return (
+                        <div
+                          key={prov.id}
+                          onClick={() => !disabled && selectProvider(prov)}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            disabled
+                              ? 'opacity-40 cursor-not-allowed border-border bg-muted/20'
+                              : selected
+                              ? 'border-primary bg-primary/5 shadow-2xs cursor-pointer'
+                              : 'border-border/70 hover:border-primary/40 bg-card cursor-pointer'
+                          }`}
+                        >
+                          <div className="font-semibold text-xs text-foreground">{prov.name}</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            {prov.capabilities.join(' • ')}
+                          </div>
+                          <div className="mt-2">
+                            {prov.id === 'local' ? (
+                              <Badge variant="outline" className="text-[9px] py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                ✓ Local
+                              </Badge>
+                            ) : prov.hasKey ? (
+                              <Badge variant="outline" className="text-[9px] py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                ✓ Configurado
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] py-0 bg-muted text-muted-foreground">
+                                Sem chave
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+
+              {/* Passo 2 */}
+              {(selProvider || modelsLoading) && (
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                    2. Selecione o Modelo ({selProvider?.name})
+                  </label>
+                  <div className="border border-border/70 rounded-xl overflow-hidden divide-y divide-border/50 max-h-56 overflow-y-auto bg-card">
                     {modelsLoading ? (
-                      <div style={{ padding: '16px', textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                        <span className="spinner" style={{ width: 14, height: 14, display: 'inline-block', marginRight: 8, verticalAlign: 'middle' }} />
-                        Buscando modelos na API de {selProvider?.name}…
+                      <div className="p-6 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                        <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                        Carregando modelos suportados...
                       </div>
                     ) : models.length === 0 ? (
-                      <div style={{ padding: '16px', textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                        Nenhum modelo disponível para {modalCap}
+                      <div className="p-6 text-center text-xs text-muted-foreground">
+                        Nenhum modelo retornado para {modalCap}
                       </div>
-                    ) : models.map((model) => (
-                      <div
-                        key={model.id}
-                        onClick={() => setSelModel(model)}
-                        style={{
-                          padding: '10px 14px', cursor: 'pointer',
-                          borderBottom: '1px solid var(--border-glass)',
-                          background: selModel?.id === model.id ? 'rgba(99,102,241,0.05)' : 'transparent',
-                          transition: 'background 0.1s',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                          <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                            {model.displayName || model.id}
-                          </span>
-                          <span style={{ display: 'flex', gap: 4 }}>
-                            {model.tags.map(tag => (
-                              <span key={tag} className={`badge ${TAG_LABELS[tag]?.cls ?? 'badge-gray'}`} style={{ fontSize: '0.65rem' }}>
-                                {TAG_LABELS[tag]?.label ?? tag}
+                    ) : (
+                      models.map((model) => {
+                        const isSelected = selModel?.id === model.id
+                        return (
+                          <div
+                            key={model.id}
+                            onClick={() => setSelModel(model)}
+                            className={`p-3 cursor-pointer transition-colors ${
+                              isSelected ? 'bg-primary/10' : 'hover:bg-muted/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-xs text-foreground">
+                                {model.displayName || model.id}
                               </span>
-                            ))}
-                          </span>
-                        </div>
-                        {model.description && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {model.description}
+                              <div className="flex gap-1">
+                                {model.tags.map((tag) => (
+                                  <Badge
+                                    key={tag}
+                                    variant={TAG_LABELS[tag]?.variant ?? 'secondary'}
+                                    className="text-[9px] py-0 h-4"
+                                  >
+                                    {TAG_LABELS[tag]?.label ?? tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            {model.description && (
+                              <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                                {model.description}
+                              </p>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    ))}
+                        )
+                      })
+                    )}
                   </div>
-                </>
+                </div>
               )}
             </div>
 
-            {/* Modal footer */}
-            <div style={{
-              padding: '14px 20px', borderTop: '1px solid var(--border-glass)',
-              display: 'flex', justifyContent: 'flex-end', gap: 8,
-              background: 'var(--bg-input)',
-            }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalOpen(false)}>Cancelar</button>
-              <button
-                className="btn btn-primary btn-sm"
+            <div className="flex items-center justify-end gap-2 p-3.5 bg-muted/30 border-t border-border/70">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setModalOpen(false)}
+                className="text-xs h-8"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
                 onClick={confirmAdd}
                 disabled={!selProvider || !selModel}
-                style={{ opacity: (!selProvider || !selModel) ? .45 : 1 }}
-              >Adicionar</button>
+                className="text-xs h-8 font-semibold"
+              >
+                Adicionar à Chain
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Toast */}
+      {/* Toast Notification */}
       {toast && (
-        <div style={{
-          position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)',
-          padding: '10px 20px', borderRadius: 8, fontSize: '0.85rem',
-          fontWeight: 500, zIndex: 600,
-          background: toast.type === 'success' ? 'var(--clr-success)' : 'var(--clr-danger)',
-          color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-        }}>{toast.msg}</div>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div
+            className={`px-4 py-2.5 rounded-xl text-xs font-medium shadow-xl flex items-center gap-2 text-white ${
+              toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
+            }`}
+          >
+            {toast.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
+            <span>{toast.msg}</span>
+          </div>
+        </div>
       )}
     </>
-  );
-};
+  )
+}
+export default AISettingsPanel

@@ -1,0 +1,319 @@
+# =============================================================================
+# AgentIA — Docker Compose
+# Stack: banco, PBX, backend Telecom, frontend, agentes IA, security.
+# =============================================================================
+
+networks:
+  agentia-net:
+    name: agentia_agentia-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.9.0/24
+
+volumes:
+  agentia_postgres_data:
+  agentia_asterisk_recordings:
+  agentia_asterisk_log:
+  agentia_fail2ban_socket:
+  agentia_security_cmds:
+  agentia_knowledge:
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 — Banco de dados unificado AgentIA
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agentia-postgres
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-agentia}
+      POSTGRES_USER:     ${POSTGRES_USER:-agentia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - agentia_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5435:5432"
+    networks:
+      agentia-net:
+        ipv4_address: 172.16.9.11
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agentia} -d ${POSTGRES_DB:-agentia}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Asterisk 21 LTS — PBX para testes de conectividade e softphone WebRTC
+  # ---------------------------------------------------------------------------
+  asterisk:
+    build:
+      context: ./asterisk
+      dockerfile: Dockerfile
+    container_name: agentia-asterisk
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.5"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AST_AMI_USER:           ${AST_AMI_USER}
+      AST_AMI_PASSWORD:       ${AST_AMI_PASSWORD}
+      AST_ARI_USER:           ${AST_ARI_USER}
+      AST_ARI_PASSWORD:       ${AST_ARI_PASSWORD}
+      POSTGRES_DB:            ${POSTGRES_DB:-agentia}
+      POSTGRES_USER:          ${POSTGRES_USER:-agentia}
+      POSTGRES_PASSWORD:      ${POSTGRES_PASSWORD}
+      SIP_TRUNK_HOST:         ${SIP_TRUNK_HOST}
+      SIP_TRUNK_FROM_DOMAIN:  ${SIP_TRUNK_FROM_DOMAIN:-agentia.local}
+      SIP_DOMAIN:             ${SIP_DOMAIN:-localhost}
+      SIP_PUBLIC_IP:          ${SIP_PUBLIC_IP}
+      INTERNAL_API_KEY:       ${INTERNAL_API_KEY}
+      RAMAL_1001_PASSWORD:    ${RAMAL_1001_PASSWORD}
+      RAMAL_1002_PASSWORD:    ${RAMAL_1002_PASSWORD}
+      RAMAL_9001_PASSWORD:    ${RAMAL_9001_PASSWORD}
+      RAMAL_9002_PASSWORD:    ${RAMAL_9002_PASSWORD}
+    volumes:
+      - ./asterisk/config:/etc/asterisk
+      - agentia_asterisk_recordings:/var/spool/asterisk/monitor
+      - agentia_asterisk_log:/var/log/asterisk
+    ports:
+      - "5062:5060/udp"
+      - "5062:5060/tcp"
+      - "16501-17000:16501-17000/udp"
+    networks:
+      agentia-net:
+        ipv4_address: 172.16.9.12
+    healthcheck:
+      test: ["CMD", "asterisk", "-rx", "core show uptime"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Docker Helper — Gerenciador seguro de containers
+  # ---------------------------------------------------------------------------
+  docker-helper:
+    build:
+      context: ./docker-helper
+      dockerfile: Dockerfile
+    container_name: agentia-docker-helper
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    environment:
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/AgentIA:/opt/AgentIA:ro
+    networks:
+      agentia-net:
+        ipv4_address: 172.16.9.13
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=4)"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Backend — Spring Boot 3.3 (Tomcat 11, JRE 21)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agentia-backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      docker-helper:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://postgres:5432/${POSTGRES_DB:-agentia}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-agentia}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKEND_JWT_SECRET:         ${BACKEND_JWT_SECRET}
+      TZ:                         America/Sao_Paulo
+      BACKEND_ALLOWED_ORIGINS:    ${BACKEND_ALLOWED_ORIGINS}
+      ADMIN_USERNAME:             ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD:             ${ADMIN_PASSWORD}
+      INTERNAL_API_KEY:           ${INTERNAL_API_KEY}
+      TELEGRAM_BOT_TOKEN:         ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID:           ${TELEGRAM_CHAT_ID}
+      AUDIO_STORAGE_PATH:         ${AUDIO_STORAGE_PATH:-/var/spool/asterisk/monitor}
+      AST_AMI_HOST:               asterisk
+      AST_AMI_PORT:               ${AST_AMI_PORT:-5038}
+      AST_AMI_USER:               ${AST_AMI_USER}
+      AST_AMI_PASSWORD:           ${AST_AMI_PASSWORD}
+      AST_CONFIG_DIR:             /etc/asterisk
+      ZABBIX_API_URL:             ${ZABBIX_API_URL}
+      ZABBIX_USER:                ${ZABBIX_USER}
+      ZABBIX_PASSWORD:            ${ZABBIX_PASSWORD}
+      ZABBIX_MIN_SEVERITY:        ${ZABBIX_MIN_SEVERITY:-4}
+      ZABBIX_POLL_INTERVAL_MINUTES: ${ZABBIX_POLL_INTERVAL_MINUTES:-5}
+      SETTINGS_FILE_PATH:         /opt/AgentIA/env/.env
+      DOCKER_HELPER_URL:          http://docker-helper:8090
+    volumes:
+      - agentia_asterisk_recordings:/var/spool/asterisk/monitor
+      - /opt/AgentIA/env:/opt/AgentIA/env
+      - /opt/AgentIA/asterisk/config:/etc/asterisk
+      - agentia_fail2ban_socket:/var/run/fail2ban
+      - agentia_security_cmds:/var/run/voipia-security
+      - /opt/AgentIA/security/config:/opt/asteriskia/security/config
+      - ./security/config/jail.d:/etc/fail2ban/jail.d:ro
+      - ./security/config/filter.d:/etc/fail2ban/filter.d:ro
+      - agentia_asterisk_log:/var/log/asterisk:ro
+      - /opt/AgentIA/security/state:/opt/asteriskia/security
+    networks:
+      agentia-net:
+        ipv4_address: 172.16.9.14
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Frontend — React 18 + TypeScript (build Vite, servido por Nginx)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL:      ${VITE_API_URL:-https://agentia.voiphash.com.br/api/v1}
+        VITE_ASTERISK_WS:  ${VITE_ASTERISK_WS:-wss://agentia.voiphash.com.br/asterisk-ws}
+        VITE_SIP_URI:      ${VITE_SIP_URI:-sip:9001@agentia.voiphash.com.br}
+        VITE_SIP_PASSWORD: ${VITE_SIP_PASSWORD:?defina VITE_SIP_PASSWORD em env/.env antes do build do frontend}
+        VITE_STUN_URL:        ${VITE_STUN_URL:-stun:stun.l.google.com:19302}
+        VITE_TURN_URL:        ${VITE_TURN_URL:-}
+        VITE_TURN_USER:       ${VITE_TURN_USER:-asteriskia}
+        VITE_TURN_CREDENTIAL: ${VITE_TURN_CREDENTIAL:-}
+    container_name: agentia-frontend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    cap_add:
+      - NET_BIND_SERVICE
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      agentia-net:
+        ipv4_address: 172.16.9.15
+
+  # ---------------------------------------------------------------------------
+  # Agents Backend — FastAPI + Python 3.12 (Plataforma de Agentes IA)
+  # ---------------------------------------------------------------------------
+  agents-backend:
+    build:
+      context: ./agents-platform/backend
+      dockerfile: Dockerfile
+    container_name: agentia-agents-api
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AGENTS_DB_HOST:     postgres
+      AGENTS_DB_PORT:     5432
+      AGENTS_DB_NAME:     ${POSTGRES_DB:-agentia}
+      AGENTS_DB_USER:     ${POSTGRES_USER:-agentia}
+      AGENTS_DB_PASS:     ${POSTGRES_PASSWORD}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      AGENTS_LLM_PROVIDER:        ${AGENTS_LLM_PROVIDER:-google}
+      AGENTS_LLM_MODEL:           ${AGENTS_LLM_MODEL:-gemini-2.5-flash}
+      AGENTS_LLM_ENABLED:         ${AGENTS_LLM_ENABLED:-false}
+      AGENTS_LLM_GOOGLE_KEY:      ${AGENTS_LLM_GOOGLE_KEY:-${GEMINI_API_KEY:-}}
+      AGENTS_LLM_ANTHROPIC_KEY:   ${AGENTS_LLM_ANTHROPIC_KEY:-}
+      AGENTS_LLM_OPENAI_KEY:      ${AGENTS_LLM_OPENAI_KEY:-}
+      AGENTS_LLM_MINIMAX_KEY:     ${AGENTS_LLM_MINIMAX_KEY:-}
+      AGENTS_LLM_MINIMAX_GROUP_ID: ${AGENTS_LLM_MINIMAX_GROUP_ID:-}
+      AGENTS_LLM_COMPAT_URL:      ${AGENTS_LLM_COMPAT_URL:-http://localhost:11434/v1}
+      AGENTS_LLM_COMPAT_KEY:      ${AGENTS_LLM_COMPAT_KEY:-}
+      BACKEND_JWT_SECRET:         ${BACKEND_JWT_SECRET}
+      BACKEND_ALLOWED_ORIGINS:    ${BACKEND_ALLOWED_ORIGINS}
+    volumes:
+      - agentia_knowledge:/app/knowledge_docs
+      - /opt/AgentIA/env:/opt/AgentIA/env
+    networks:
+      agentia-net:
+        ipv4_address: 172.16.9.16
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8000/api/system/health', timeout=4)"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # Security — Fail2ban + nftables
+  # ---------------------------------------------------------------------------
+  security:
+    build:
+      context: ./security
+      dockerfile: Dockerfile
+    container_name: agentia-security
+    restart: unless-stopped
+    network_mode: host
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    depends_on:
+      asterisk:
+        condition: service_healthy
+    environment:
+      ASTERISK_LOG_FILE: /var/log/asterisk/full
+    volumes:
+      - agentia_asterisk_log:/var/log/asterisk:ro
+      - ./security/config/jail.d:/etc/fail2ban/jail.d
+      - ./security/config/filter.d:/etc/fail2ban/filter.d
+      - agentia_fail2ban_socket:/var/run/fail2ban
+      - agentia_security_cmds:/var/run/voipia-security
+      - /etc/ufw:/etc/ufw
+      - /run/ufw.lock:/run/ufw.lock
+    healthcheck:
+      test: ["CMD", "fail2ban-client", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

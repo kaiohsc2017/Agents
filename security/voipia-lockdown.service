@@ -1,0 +1,27 @@
+# =============================================================================
+# voipia-lockdown.service — Watcher de lockdown SIP (roda no HOST)
+#
+# Executa o lockdown-watcher.sh, que:
+#   - aplica comandos nftables enfileirados pelo backend (.cmd)
+#   - reaplica o lockdown persistente após restart do Docker
+#
+# Instalação:
+#   sudo cp security/voipia-lockdown.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now voipia-lockdown
+# =============================================================================
+[Unit]
+Description=VoipIA SIP Lockdown Watcher
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/VoipIA/security/lockdown-watcher.sh
+Restart=always
+RestartSec=5
+# Precisa de privilégio para manipular nftables na chain DOCKER-USER
+User=root
+
+[Install]
+WantedBy=multi-user.target

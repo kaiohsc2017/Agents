@@ -26,65 +26,22 @@ import java.util.List;
 @Configuration
 public class AppConfig {
 
-    @Value("${app.cors.allowed-origins}")
+    @Value("${app.cors.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
 
-    @Value("${app.callcenter.chat.allowed-origins:}")
-    private String chatAllowedOrigins;
-
     /**
-     * CORS consumido por {@code SecurityConfig} via {@code http.cors(...)} (não
-     * {@code WebMvcConfigurer.addCorsMappings}, e não um {@code CorsFilter} avulso).
-     *
-     * <p>Achado de bug #1: com duas entradas em {@code CorsRegistry} cujos padrões se
-     * sobrepõem ({@code /api/**} e {@code /api/v1/callcenter/chat/public/**}), o
-     * {@code UrlBasedCorsConfigurationSource} do Spring MVC COMBINA as duas configurações pra
-     * qualquer request sob a rota pública — e a combinação de {@code allowCredentials=true}
-     * (da regra geral) com {@code allowedOrigins=*} (da regra do widget) é uma combinação
-     * inválida que o {@code DefaultCorsProcessor} rejeita com 403 "Invalid CORS request".
-     * Resolvido decidindo a configuração inteira por request (branch manual por path), nunca
-     * combinando duas configurações parciais.
-     *
-     * <p>Achado de bug #2: um {@code CorsFilter} criado como {@code @Bean} avulso (sem
-     * {@code @Order}) é registrado pelo Spring Boot com precedência baixa — a cadeia do
-     * Spring Security roda primeiro e barrava o preflight OPTIONS de qualquer rota
-     * autenticada com 403, antes do CorsFilter ter chance de responder. Corrigido consumindo
-     * este bean diretamente em {@code SecurityConfig.http.cors(...)}, que integra o CORS
-     * DENTRO da cadeia de segurança — o Spring Security já sabe reconhecer e liberar
-     * preflight antes da checagem de autorização quando configurado dessa forma.
+     * CORS consumido por {@code SecurityConfig} via {@code http.cors(...)}.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration restricted = new CorsConfiguration();
-        restricted.setAllowedOriginPatterns(List.of(allowedOrigins.split(",")));
-        restricted.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        restricted.setAllowedHeaders(List.of("*"));
-        restricted.setAllowCredentials(true);
-        restricted.setMaxAge(3600L);
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOriginPatterns(List.of(allowedOrigins.split(",")));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
-        // Widget de chat "público" (Fase 7b) — nome legado; D8 (2026-08-08) já esclareceu que a
-        // aplicação nunca vai à internet aberta, roda dentro da rede corporativa. Fase 24:
-        // origem "*" (pensada originalmente pra widget embutido em site externo) trocada por
-        // uma lista configurável de origens corporativas reais — vazia nesta VPS de dev
-        // (nenhuma origem cross-origin liberada até ser configurada de verdade). Continua sem
-        // allowCredentials=true: o token de sessão viaja em header/body, nunca em cookie, então
-        // não há CSRF a mitigar nesta rota mesmo com a lista vazia/restrita.
-        CorsConfiguration publicChat = new CorsConfiguration();
-        var chatOrigins = chatAllowedOrigins == null || chatAllowedOrigins.isBlank()
-                ? List.<String>of()
-                : java.util.Arrays.stream(chatAllowedOrigins.split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isBlank())
-                        .toList();
-        publicChat.setAllowedOriginPatterns(chatOrigins);
-        publicChat.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
-        publicChat.setAllowedHeaders(List.of("*"));
-        publicChat.setAllowCredentials(false);
-        publicChat.setMaxAge(3600L);
-
-        return request -> request.getRequestURI().startsWith("/api/v1/callcenter/chat/public/")
-                ? publicChat
-                : restricted;
+        return request -> config;
     }
 
     /**

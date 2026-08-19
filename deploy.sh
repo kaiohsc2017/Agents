@@ -9,7 +9,7 @@
 # =============================================================================
 set -euo pipefail
 
-APP_DIR="/opt/VoipIA"
+APP_DIR="/opt/AgentIA"
 FORCE_BUILD="${1:-}"
 
 log()  { echo -e "\n\033[1;34m[$(date '+%H:%M:%S')]\033[0m $*"; }

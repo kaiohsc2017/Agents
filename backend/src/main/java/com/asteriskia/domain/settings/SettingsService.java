@@ -30,6 +30,7 @@ public class SettingsService {
     private final SettingsHistoryRepository historyRepository;
     private final EnvFileStore envFileStore;
     private final SettingsApplyJobService applyJobService;
+    private final com.asteriskia.domain.config.ConfigService configService;
 
     /** Token sentinela enviado pelo frontend quando o campo não foi alterado. */
     private static final String MASK_SENTINEL = "••••••••";
@@ -80,6 +81,25 @@ public class SettingsService {
                                 "isSecret", e.isSecret()));
             }
         }
+
+        // Sobrepõe com valores dinâmicos do banco (system_config)
+        try {
+            List<com.asteriskia.domain.config.SystemConfig> dbConfigs = configService.findAll();
+            for (com.asteriskia.domain.config.SystemConfig c : dbConfigs) {
+                if (c.getKey() != null && !c.getKey().isBlank()) {
+                    boolean secret = Boolean.TRUE.equals(c.getIsSecret()) || EnvFileStore.isSecretKey(c.getKey());
+                    String val = secret ? EnvFileStore.MASK_DISPLAY : (c.getValue() != null ? c.getValue() : "");
+                    result.put(
+                            c.getKey(),
+                            Map.of(
+                                    "value", val,
+                                    "isSecret", secret));
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("SettingsService: não foi possível carregar system_config do banco: {}", ex.getMessage());
+        }
+
         return result;
     }
 
@@ -125,6 +145,21 @@ public class SettingsService {
                 });
 
         envFileStore.rewrite(resolved);
+
+        // Atualiza dinamicamente no banco system_config e invalida cache em memória (Zero Downtime)
+        try {
+            Map<String, String> nonMaskedDbUpdates = new LinkedHashMap<>();
+            updates.forEach((k, v) -> {
+                if (!MASK_SENTINEL.equals(v) && v != null) {
+                    nonMaskedDbUpdates.put(k, v.replace("\r", "").replace("\n", ""));
+                }
+            });
+            if (!nonMaskedDbUpdates.isEmpty()) {
+                configService.setAll(nonMaskedDbUpdates, changedBy);
+            }
+        } catch (Exception ex) {
+            log.warn("SettingsService: erro ao sincronizar com system_config: {}", ex.getMessage());
+        }
 
         // Registra histórico de alterações (apenas chaves que mudaram)
         recordHistory(current, resolved, changedBy, ipAddress);

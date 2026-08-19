@@ -92,6 +92,11 @@ Gerenciado pelo script assíncrono `agents-platform/backend/migrate.py`:
 - `knowledge_docs` & `knowledge_chunks`: Documentos particionados com vetores de embedding para busca semântica RAG.
 - `secrets`: Armazenamento cifrado de senhas de banco, credenciais SSH e tokens de webhook.
 
+### 4.3. Arquitetura de Configurações em Duas Camadas (Two-Tier Zero Downtime)
+- **Camada de Bootstrap / Infraestrutura (`env/.env`):** Segredos do Docker, banco de dados e bind de rede (`POSTGRES_*`, `SIP_PUBLIC_IP`, `BACKEND_JWT_SECRET`).
+- **Camada de Aplicação / Negócio (`system_config`):** Chaves dinâmicas com cache em memória (TTL 60s) e invalidação imediata via UI. Permite alterar credenciais Zabbix, Telegram, IA/LLMs, Active Directory, Jira e SMTP com **efeito imediato (Zero Downtime)**, sem reinicialização de containers.
+- **Dual-Write Resiliente:** Ao salvar na interface web, o backend atualiza o banco de dados `system_config` (efeito em runtime) e persiste no arquivo `.env` (persistência após reboot).
+
 ---
 
 ## 5. Integrações de Mídia e Telefonia (Asterisk 21 LTS)

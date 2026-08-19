@@ -90,13 +90,22 @@ public class ConfigService {
      */
     @Transactional
     public void set(String key, String value, String updatedBy) {
+        boolean secret = isSecretKey(key);
         SystemConfig config = repository.findById(key)
-                .orElseGet(() -> SystemConfig.builder().key(key).isSecret(false).build());
-        config.setValue(value);
+                .orElseGet(() -> SystemConfig.builder().key(key).isSecret(secret).build());
+        config.setValue(value != null ? value : "");
+        if (config.getIsSecret() == null) {
+            config.setIsSecret(secret);
+        }
         config.setUpdatedBy(updatedBy != null ? updatedBy : "system");
         repository.save(config);
         cache.remove(key); // Invalida imediatamente
         log.info("ConfigService: chave '{}' atualizada por '{}'", key, updatedBy);
+    }
+
+    private static boolean isSecretKey(String key) {
+        return key != null && (key.endsWith("_PASSWORD") || key.endsWith("_KEY")
+                || key.endsWith("_TOKEN") || key.endsWith("_SECRET") || key.endsWith("_CREDENTIAL"));
     }
 
     /**

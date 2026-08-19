@@ -32,6 +32,7 @@ class SettingsServiceTest {
 
     @Mock private SettingsHistoryRepository historyRepository;
     @Mock private SettingsApplyJobService applyJobService;
+    @Mock private com.asteriskia.domain.config.ConfigService configService;
 
     private EnvFileStore envFileStore;
     private SettingsService service;
@@ -45,7 +46,7 @@ class SettingsServiceTest {
         envFileStore = new EnvFileStore();
         envFile = tempDir.resolve(".env");
         ReflectionTestUtils.setField(envFileStore, "settingsFilePath", envFile.toString());
-        service = new SettingsService(historyRepository, envFileStore, applyJobService);
+        service = new SettingsService(historyRepository, envFileStore, applyJobService, configService);
     }
 
     private void write(String content) throws IOException {

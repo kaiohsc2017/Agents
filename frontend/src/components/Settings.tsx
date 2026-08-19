@@ -12,7 +12,6 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
-  Play,
   Save,
   ChevronDown,
   Terminal,
@@ -534,6 +533,9 @@ export default function Settings() {
                     <div>
                       <div className="flex items-center gap-2">
                         <CardTitle className="text-sm font-semibold">{section.title}</CardTitle>
+                        <Badge variant="success" className="text-[10px] py-0 px-2 font-mono">
+                          Zero Downtime
+                        </Badge>
                         {hasChanges && (
                           <Badge variant="warning" className="text-[10px] py-0 px-2 font-mono">
                             ● modificado
@@ -660,23 +662,24 @@ export default function Settings() {
 
                       <div className="flex items-center gap-2">
                         <Button
-                          variant="outline"
                           size="sm"
                           onClick={() => handleSaveSection(section)}
                           disabled={isSaving || isApplying || !hasChanges}
-                          className="font-semibold text-xs h-8"
+                          className="font-semibold text-xs h-8 bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                           <Save className="h-3.5 w-3.5 mr-1" />
-                          Salvar (.env)
+                          Salvar (Efeito Imediato)
                         </Button>
                         <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleApplySection(section)}
                           disabled={isSaving || isApplying}
                           className="font-semibold text-xs h-8"
+                          title="Salva e reinicia os containers afetados se necessário"
                         >
-                          <Play className="h-3.5 w-3.5 mr-1" />
-                          Salvar e Aplicar
+                          <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                          Salvar e Reiniciar
                         </Button>
                       </div>
                     </div>

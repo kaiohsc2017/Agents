@@ -117,3 +117,11 @@ As migrações SQL residem em `backend/src/main/resources/db/migration/`:
 - O backend Spring Boot conecta-se à porta `5038/tcp` do Asterisk através de conexão TCP persistente.
 - Ações emitidas: `Originate` (disparo de chamadas de teste e alertas), `Hangup`, `CoreStatus`, `SIPpeers`.
 - Eventos consumidos: `Newchannel`, `Newstate` (Up/Ringing), `HangupCause`, `VarSet`.
+
+### 5.3. Direcionamento da Análise Acústica e Escopo da Nota MOS (ITU-T P.800)
+- **Origem do Sinal Analisado:** A análise acústica e o cálculo do MOS Score incidem estritamente sobre o **fluxo de áudio recebido (RX / Inbound Audio)** retornado pelo **número de destino que atendeu a chamada** (junto com o circuito de telecomunicação da operadora responsável pelo transporte).
+- **O que a Nota MOS Reflete:**
+  1. **Inteligibilidade da URA / Atendimento do Destino:** Mede a clareza da voz sintetizada ou humana emitida pelo número chamado.
+  2. **Detecção de Linha Muda (*One-Way Audio*):** Identifica se a chamada completou com sinalização SIP 200 OK mas não entregou mídia RTP (silêncio superior a 80% do tempo de conversação).
+  3. **Degradação de Rota da Operadora:** Detecta ruído de canal em dBFS, distorção espectral (*clipping*) e voz robótica decorrente de oscilações de jitter e perda de pacotes da operadora.
+- **Caso de Uso Corporativo:** Permite aos gestores auditar com precisão a experiência auditiva que os clientes finais vivenciam ao discar para os números 0800 e centrais de atendimento da empresa.

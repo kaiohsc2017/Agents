@@ -278,23 +278,26 @@ Centraliza o gerenciamento de configurações da aplicação:
 ### 3.8. IA Acústica: Auditoria de Áudio & MOS Score (Pilar 3)
 
 O AgentIA audita a qualidade perceptual da voz (conforme a norma ITU-T P.800/G.107) em todos os testes e chamadas:
+- **Origem do Sinal (O que é analisado):** A nota MOS é calculada com base no **áudio retornado pelo número de destino que atendeu a ligação** (fluxo RX) e no circuito da operadora que transportou essa chamada. Isso permite à empresa validar a exata experiência auditiva que o cliente tem ao ouvir a URA ou o atendente do 0800/linha testada.
 - **Nota MOS (1.0 a 5.0):**
   - 🟢 **Excelente (MOS $\ge 4.15$):** Voz nítida e cristalina, sem ruído.
   - 🔵 **Boa (MOS $3.75 - 4.14$):** Padrão de chamada telefônica celular HD.
   - 🟡 **Regular (MOS $3.10 - 3.74$):** Leve chiado ou compressão de canal.
   - 🔴 **Degradada (MOS $< 3.10$):** Picotamento de áudio, ruído intenso ou linha muda.
-- **Waveform & Espectrograma:** No histórico do teste, clique no badge de MOS para inspecionar a onda sonora e o laudo explicativo da Inteligência Artificial.
+- **Waveform & Espectrograma:** No histórico do teste ou na tela dedicada de QoS, clique no badge de MOS para inspecionar a onda sonora e o laudo explicativo da Inteligência Artificial.
 - **Auto-Cura no Flow Canvas:** Se uma linha sofrer degradação acústica repetida, o gatilho `Degradação MOS` no Flow Canvas dispara a comutação de tronco no Asterisk automaticamente.
 
 ---
 
 ## 4. Guia Rápido de Solução de Dúvidas Operacionais
 
+- **P: A nota de MOS analisa o meu número que ligou ou o número que atendeu a chamada?**  
+  *R:* A nota MOS analisa o **áudio recebido do número de destino que atendeu** somado à qualidade de entrega da operadora. Se você cadastrou o seu próprio 0800, ela mede com precisão a qualidade com que a sua URA ou atendente é ouvido por quem liga.
 - **P: Por que o teste de conectividade ficou com status `SEM_RESPOSTA`?**  
   *R:* O número chamado tocou até o tempo limite configurado (30 segundos) sem que ninguém atendesse ou caísse na caixa postal.
 - **P: Por que não consigo ver o menu de Configurações ou Agentes?**  
   *R:* O seu usuário não possui a permissão `rw` ou `r` associada à chave correspondente no seu Grupo de Acesso. Solicite ao administrador da plataforma.
 - **P: Como escutar o áudio de um teste antigo?**  
-  *R:* Acesse o menu **Conectividade**, filtre pelo número desejado e clique no ícone de visualização `[👁️]`. O histórico com o reprodutor de áudio será aberto.
+  *R:* Acesse o menu **Conectividade** ou **Qualidade de Áudio (QoS)**, filtre pelo número desejado e clique no ícone de visualização `[👁️]`. O histórico com o reprodutor de áudio e espectrograma será aberto.
 - **P: As alterações no menu de Configurações derrubam as ligações em andamento?**  
   *R:* Não. O botão **Salvar (Efeito Imediato)** utiliza a arquitetura Two-Tier Zero Downtime, aplicando as novas configurações em memória sem reiniciar o Asterisk ou o backend.

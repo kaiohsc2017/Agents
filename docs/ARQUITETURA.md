@@ -222,6 +222,9 @@ O **Agent Flow Canvas** é o motor de orquestração visual de colaboração mul
 ### 4.6. IA Acústica: Audio QoS & MOS Preditivo (Normas ITU-T P.800 & G.107)
 
 O motor de IA acústica (`audio_qos.py`) atua como auditor perceptual de qualidade de voz para todas as chamadas e testes de conectividade:
+- **Escopo e Direcionamento do Sinal Analisado:**
+  - A nota MOS avalia **o fluxo de áudio recebido do número de destino que atendeu a chamada** (RX / Inbound Audio Stream) somado à qualidade do circuito da operadora de transporte.
+  - Isso permite auditar a experiência do cliente final ao ouvir a URA ou atendente do 0800/linha testada.
 - **Processamento Acústico Direto em PCM WAV:**
   - Extrai frames de áudio na taxa de amostragem nativa (8kHz/16kHz).
   - Mede energia RMS, Signal-to-Noise Ratio (SNR), nível do piso de ruído (`noise_db` em dBFS) e detecção de saturação (*clipping*).

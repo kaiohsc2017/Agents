@@ -105,15 +105,16 @@ const PAGE_RESOURCE: Partial<Record<Page, string>> = {
   agAlerts:     'agents.reports',
   agSecrets:    'agents.secrets',
   agLlm:        'agents.llm',
+  agFlows:      'agents.flows',
 }
 
 const LINK_RESOURCE: Partial<Record<Page, string>> = {
   agDashboard: 'telecom.agents_link', agAgents: 'telecom.agents_link', agServers: 'telecom.agents_link',
   agKnowledge: 'telecom.agents_link', agLogs: 'telecom.agents_link', agAlerts: 'telecom.agents_link',
-  agSecrets: 'telecom.agents_link', agLlm: 'telecom.agents_link',
+  agSecrets: 'telecom.agents_link', agLlm: 'telecom.agents_link', agFlows: 'telecom.agents_link',
 }
 
-const AGENTS_SUBPAGES: Page[] = ['agDashboard', 'agAgents', 'agServers', 'agKnowledge', 'agLogs', 'agAlerts', 'agSecrets', 'agLlm']
+const AGENTS_SUBPAGES: Page[] = ['agDashboard', 'agAgents', 'agServers', 'agKnowledge', 'agLogs', 'agAlerts', 'agSecrets', 'agLlm', 'agFlows']
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token'))

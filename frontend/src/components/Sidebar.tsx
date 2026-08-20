@@ -12,7 +12,7 @@ import { RELEASES } from '../data/releases';
 const CURRENT_VERSION = RELEASES[RELEASES.length - 1].version;
 
 type Page = 'dashboard' | 'modulo2' | 'modulo3' | 'users' | 'operadoras' | 'cadastro0800' | 'linhas' | 'settings' | 'audit' | 'logs' | 'agents' | 'accessGroups' | 'release'
-  | 'agDashboard' | 'agAgents' | 'agServers' | 'agKnowledge' | 'agLogs' | 'agAlerts' | 'agSecrets' | 'agLlm';
+  | 'agDashboard' | 'agAgents' | 'agServers' | 'agKnowledge' | 'agLogs' | 'agAlerts' | 'agSecrets' | 'agLlm' | 'agFlows';
 
 interface SidebarProps {
   currentPage: Page;
@@ -68,6 +68,7 @@ const NAV_ITEMS: NavEntry[] = [
       { page: 'agAlerts',    icon: Bell,            label: 'Alertas',              section: 'MÓDULOS', resource: 'agents.reports'   },
       { page: 'agSecrets',   icon: KeyRound,        label: 'Secrets',              section: 'MÓDULOS', resource: 'agents.secrets'   },
       { page: 'agLlm',       icon: Settings,        label: 'Config. IA',           section: 'MÓDULOS', resource: 'agents.llm'       },
+      { page: 'agFlows',     icon: ClipboardList,   label: 'Flow Canvas',          section: 'MÓDULOS', resource: 'agents.flows'     },
     ],
   },
   { page: 'users',        icon: UsersRound,      label: 'Usuários',           section: 'CADASTROS', resource: 'telecom.users'        },

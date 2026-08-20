@@ -12,6 +12,7 @@ const RESOURCE_CATALOG: { key: string; label: string; system: 'Telecom' | 'Agent
   { key: 'telecom.dashboard', label: 'Dashboard Operacional', system: 'Telecom' },
   { key: 'telecom.modulo2', label: 'Conectividade SIP', system: 'Telecom' },
   { key: 'telecom.modulo3', label: 'Alertas & Zabbix', system: 'Telecom' },
+  { key: 'telecom.qos', label: 'Qualidade de Áudio (QoS)', system: 'Telecom' },
   { key: 'telecom.agents_link', label: 'Agentes IA (Navegação)', system: 'Telecom' },
   { key: 'telecom.0800', label: 'Números 0800', system: 'Telecom' },
   { key: 'telecom.linhas', label: 'Linhas & Troncos', system: 'Telecom' },
@@ -30,6 +31,7 @@ const RESOURCE_CATALOG: { key: string; label: string; system: 'Telecom' | 'Agent
   { key: 'agents.reports', label: 'Alertas & Relatórios IA', system: 'Agentes' },
   { key: 'agents.secrets', label: 'Chaves e Segredos', system: 'Agentes' },
   { key: 'agents.llm', label: 'Modelos LLM & Provedores', system: 'Agentes' },
+  { key: 'agents.flows', label: 'Flow Canvas (DAG)', system: 'Agentes' },
 ]
 
 type PermMap = Record<string, { canRead: boolean; canWrite: boolean }>

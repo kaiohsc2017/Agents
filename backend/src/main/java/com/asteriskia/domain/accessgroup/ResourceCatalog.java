@@ -14,6 +14,7 @@ public final class ResourceCatalog {
             "telecom.dashboard",
             "telecom.modulo2",
             "telecom.modulo3",
+            "telecom.qos",
             "telecom.agents_link",
             "telecom.0800",
             "telecom.linhas",
@@ -34,7 +35,8 @@ public final class ResourceCatalog {
             "agents.logs",
             "agents.reports",
             "agents.secrets",
-            "agents.llm"
+            "agents.llm",
+            "agents.flows"
     );
 
     public static List<String> all() {

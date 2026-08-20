@@ -74,6 +74,7 @@ A tabela abaixo documenta a correlação exata entre o menu da interface, a chav
 | **Agentes → Secrets Vault** | `agents.secrets` | `r` (Listar chaves), `rw` (Salvar) | `routers/system.py` | `agent_secrets` |
 | **Agentes → Config. IA** | `agents.llm` | `r` (Ver), `rw` (Alterar) | `routers/llm_config.py` | `system_config` |
 | **Agentes → Flow Canvas (DAG)** | `agents.flows` | `r` (Listar), `rw` (Criar/Executar) | `routers/flows.py`, `flow_engine.py` | `agent_flows`, `flow_executions`, `flow_execution_steps` |
+| **Telecom → Audio QoS (IA)** | `telecom.qos` | `r` (Ver métricas), `rw` (Analisar) | `routers/audio_qos.py`, `audio_qos.py` | `audio_qos_metrics`, `test_results` |
 
 ---
 
@@ -85,11 +86,13 @@ As migrações SQL residem em `backend/src/main/resources/db/migration/`:
 - `V15__call_record_filters.sql` a `V26__user_business_units_access_control.sql`: RBAC granular, multitenancy por BU e auditoria.
 - `V27` a `V90`: Configurações em runtime, sincronização Active Directory / LDAP e parâmetros de IA.
 - `V91__create_agent_flows_tables.sql`: Tabelas do motor DAG `agent_flows`, `flow_executions` e `flow_execution_steps`.
+- `V92__create_audio_qos_tables.sql`: Métricas de Audio QoS (MOS ITU-T P.800, Jitter, Ruído dB, Waveform e Laudo IA).
 
-### 4.2. Schema da Plataforma de Agentes & Motor DAG
+### 4.2. Schema da Plataforma de Agentes, Motor DAG & IA Acústica
 - `agents` & `agent_executions`: Cadastro e histórico de robôs de automação (SSH, SQL, HTTP, Logs).
 - `agent_flows`: Definição de grafos direcionados acíclicos (DAG) em JSONB com nós visuais e conexões.
 - `flow_executions` & `flow_execution_steps`: Telemetria de execução nó a nó com duração em ms, status e payload context.
+- `audio_qos_metrics`: Telemetria acústica com nota MOS (1.0 a 5.0), Jitter (ms), Ruído (dBFS), Perda de Pacotes (%), Waveform (JSONB) e Parecer da IA.
 - `knowledge_docs` & `agent_memory`: Documentos particionados com vetores de embedding para busca semântica RAG.
 - `agent_secrets`: Armazenamento cifrado de senhas de banco, credenciais SSH e tokens de webhook.
 

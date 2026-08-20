@@ -327,3 +327,62 @@ curl -s -X GET "https://agentia.voiphash.com.br/api/v1/connectivity/results?page
   "ringTimeSeconds": 3
 }
 ```
+
+---
+
+## 8. APIs de Audio QoS & MOS Preditivo (IA Acústica ITU-T P.800)
+
+Base URL: `https://agentia.voiphash.com.br/agents/api/audio-qos`
+
+### 8.1. Resumo Executivo e Ranking de Operadoras
+- **Método:** `GET /summary`
+- **Descrição:** Retorna estatísticas consolidadas de qualidade acústica, MOS Score médio global, conformidade com SLA e ranking por operadora.
+
+#### Exemplo de Resposta (200 OK):
+```json
+{
+  "total_evaluated": 120,
+  "avg_mos": 4.28,
+  "avg_jitter_ms": 1.75,
+  "avg_noise_db": -62.4,
+  "sla_pass_pct": 97.5,
+  "mos_by_operadora": [
+    {
+      "operadora": "Vivo / Telefônica",
+      "avg_mos": 4.38,
+      "avg_jitter_ms": 1.60,
+      "avg_noise_db": -64.2,
+      "tests_count": 48
+    },
+    {
+      "operadora": "Claro Telecom",
+      "avg_mos": 4.22,
+      "avg_jitter_ms": 1.90,
+      "avg_noise_db": -61.5,
+      "tests_count": 52
+    }
+  ]
+}
+```
+
+### 8.2. Consulta de Qualidade por Teste
+- **Método:** `GET /test/{test_result_id}`
+- **Descrição:** Retorna os dados acústicos detalhados, vetor de waveform para renderização gráfica e parecer da IA.
+
+#### Exemplo de Resposta (200 OK):
+```json
+{
+  "id": "1d31962b-b97e-4621-93f9-19a6528a75f7",
+  "test_result_id": 8,
+  "phone_number": "08007771234",
+  "operadora_name": "Claro Telecom",
+  "mos_score": 4.35,
+  "jitter_ms": 1.45,
+  "noise_db": -63.1,
+  "packet_loss_pct": 0.0,
+  "quality_status": "EXCELLENT",
+  "ai_diagnosis": "Voz nítida com excelente inteligibilidade (MOS 4.35). Piso de ruído desprezível (-63.1 dB) e 0% de perda de pacotes.",
+  "waveform_data": [20, 35, 60, 85, 95, 75, 50, 65, 80, 90, 85, 70, 45, 30, 55, 70, 85, 60]
+}
+```
+

@@ -275,6 +275,19 @@ Centraliza o gerenciamento de configurações da aplicação:
 
 ---
 
+### 3.8. IA Acústica: Auditoria de Áudio & MOS Score (Pilar 3)
+
+O AgentIA audita a qualidade perceptual da voz (conforme a norma ITU-T P.800/G.107) em todos os testes e chamadas:
+- **Nota MOS (1.0 a 5.0):**
+  - 🟢 **Excelente (MOS $\ge 4.15$):** Voz nítida e cristalina, sem ruído.
+  - 🔵 **Boa (MOS $3.75 - 4.14$):** Padrão de chamada telefônica celular HD.
+  - 🟡 **Regular (MOS $3.10 - 3.74$):** Leve chiado ou compressão de canal.
+  - 🔴 **Degradada (MOS $< 3.10$):** Picotamento de áudio, ruído intenso ou linha muda.
+- **Waveform & Espectrograma:** No histórico do teste, clique no badge de MOS para inspecionar a onda sonora e o laudo explicativo da Inteligência Artificial.
+- **Auto-Cura no Flow Canvas:** Se uma linha sofrer degradação acústica repetida, o gatilho `Degradação MOS` no Flow Canvas dispara a comutação de tronco no Asterisk automaticamente.
+
+---
+
 ## 4. Guia Rápido de Solução de Dúvidas Operacionais
 
 - **P: Por que o teste de conectividade ficou com status `SEM_RESPOSTA`?**  

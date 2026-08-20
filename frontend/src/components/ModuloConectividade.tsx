@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import api, { getErrorMessage } from '../api/client'
+import agentsApi from './agents/agentsClient'
 import type {
   NumberTest,
   NumberTestCreate,
@@ -14,6 +15,7 @@ import type {
 import { HistoricoModal } from './HistoricoModal'
 import { DashboardKPIs } from './DashboardKPIs'
 import { TestModal } from './TestModal'
+import { AudioQosBadge, type AudioQosData } from './shared/AudioQosBadge'
 import { formatDate, nextExecution, getPeriodRange } from './connectivityHelpers'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -74,6 +76,7 @@ export default function ModuloConectividade() {
     detalhes: { linha: number; conteudo: string; erro: string }[]
   } | null>(null)
   const [search, setSearch] = useState('')
+  const [qosMap, setQosMap] = useState<Record<number, AudioQosData>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadTests = () => {
@@ -133,9 +136,19 @@ export default function ModuloConectividade() {
     api
       .get<PageResponse<TestResult>>(`/test-results?${params}`)
       .then((r) => {
-        setResults(r.data.content ?? [])
+        const list = r.data.content ?? []
+        setResults(list)
         setResTotalPages(r.data.totalPages)
         setResPage(r.data.number)
+        // Carrega métricas de QoS assincronamente
+        for (const res of list) {
+          agentsApi
+            .get<AudioQosData>(`/api/audio-qos/test/${res.id}`)
+            .then((q) => {
+              if (q.data) setQosMap((prev: Record<number, AudioQosData>) => ({ ...prev, [res.id]: q.data }))
+            })
+            .catch(() => {})
+        }
       })
       .catch((err) => console.error('Erro ao carregar resultados de conectividade:', err))
       .finally(() => setLoading(false))
@@ -705,6 +718,7 @@ export default function ModuloConectividade() {
                       <th className="py-3 px-4">Cliente</th>
                       <th className="py-3 px-4">Operação</th>
                       <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Qualidade (MOS)</th>
                       <th className="py-3 px-4">Código SIP</th>
                       <th className="py-3 px-4">Motivo SIP</th>
                       <th className="py-3 px-4 font-mono">Ordem</th>
@@ -713,7 +727,7 @@ export default function ModuloConectividade() {
                   <tbody className="divide-y divide-border/40">
                     {results.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-10 text-center text-muted-foreground">
+                        <td colSpan={11} className="py-10 text-center text-muted-foreground">
                           Nenhum resultado registrado para o filtro selecionado.
                         </td>
                       </tr>
@@ -743,6 +757,9 @@ export default function ModuloConectividade() {
                             >
                               {r.status}
                             </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <AudioQosBadge qos={qosMap[r.id]} size="sm" />
                           </td>
                           <td className="py-3 px-4 font-mono text-muted-foreground">{r.sipResponseCode ?? '—'}</td>
                           <td className="py-3 px-4 text-muted-foreground truncate max-w-xs">

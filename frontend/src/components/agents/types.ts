@@ -159,8 +159,8 @@ export interface LlmTestResult {
 export interface FlowNodeData {
   label: string;
   subtext?: string;
-  triggerType?: 'manual' | 'cron' | 'telecom_alert' | 'zabbix' | 'webhook';
-  actionType?: 'ssh' | 'sql' | 'http' | 'log';
+  triggerType?: 'manual' | 'cron' | 'telecom_alert' | 'zabbix' | 'webhook' | 'audio_qos';
+  actionType?: 'ssh' | 'sql' | 'http' | 'log' | 'audio_qos';
   cognitiveType?: 'llm' | 'rag' | 'condition';
   actuatorType?: 'telegram' | 'asterisk_action' | 'voice_call' | 'jira';
   cmd?: string;

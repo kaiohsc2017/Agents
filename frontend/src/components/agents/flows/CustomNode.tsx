@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import {
   Zap, Terminal, Database, Globe, Brain, BookOpen, GitFork,
-  Send, PhoneCall, Bot
+  Send, PhoneCall, Bot, Volume2
 } from 'lucide-react';
 import type { FlowNodeData } from '../types';
 
@@ -25,7 +25,7 @@ export const CustomNode = memo(({ id, data, selected, type }: CustomNodeProps) =
   if (nodeType === 'triggerNode') {
     categoryLabel = 'Gatilho';
     badgeColor = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
-    IconComponent = Zap;
+    IconComponent = data.triggerType === 'audio_qos' ? Volume2 : Zap;
   } else if (nodeType === 'cognitiveNode') {
     categoryLabel = 'IA & Raciocínio';
     badgeColor = 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
@@ -38,6 +38,7 @@ export const CustomNode = memo(({ id, data, selected, type }: CustomNodeProps) =
     // Action sub-types
     if (data.actionType === 'sql') IconComponent = Database;
     if (data.actionType === 'http') IconComponent = Globe;
+    if (data.actionType === 'audio_qos') IconComponent = Volume2;
   }
 
   const isTrigger = nodeType === 'triggerNode';

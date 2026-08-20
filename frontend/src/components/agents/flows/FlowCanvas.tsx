@@ -20,7 +20,7 @@ import '@xyflow/react/dist/style.css';
 
 import {
   Zap, Terminal, Database, Globe, Brain, BookOpen,
-  Send, PhoneCall, Bot, Play, Save, ArrowLeft, CheckCircle2, AlertCircle, Trash2
+  Send, PhoneCall, Bot, Play, Save, ArrowLeft, CheckCircle2, AlertCircle, Trash2, Volume2
 } from 'lucide-react';
 
 import { CustomNode } from './CustomNode';
@@ -302,6 +302,12 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
                 <Zap className="h-3.5 w-3.5 text-amber-500" /> Falha Telecom
               </button>
               <button
+                onClick={() => addNode('triggerNode', 'audio_qos', 'Degradação MOS (< 3.5)')}
+                className="w-full text-left text-xs p-2 rounded-lg border border-border/60 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all text-foreground flex items-center gap-2"
+              >
+                <Volume2 className="h-3.5 w-3.5 text-amber-500" /> Degradação MOS
+              </button>
+              <button
                 onClick={() => addNode('triggerNode', 'cron', 'Agendamento Cron')}
                 className="w-full text-left text-xs p-2 rounded-lg border border-border/60 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all text-foreground flex items-center gap-2"
               >
@@ -315,6 +321,12 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
               <Terminal className="h-3.5 w-3.5 text-blue-500" /> Coletores
             </h5>
             <div className="space-y-1.5">
+              <button
+                onClick={() => addNode('actionNode', 'audio_qos', 'Auditoria Acústica QoS')}
+                className="w-full text-left text-xs p-2 rounded-lg border border-border/60 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-foreground flex items-center gap-2"
+              >
+                <Volume2 className="h-3.5 w-3.5 text-blue-500" /> Análise de Áudio
+              </button>
               <button
                 onClick={() => addNode('actionNode', 'ssh', 'Diagnóstico SSH')}
                 className="w-full text-left text-xs p-2 rounded-lg border border-border/60 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-foreground flex items-center gap-2"

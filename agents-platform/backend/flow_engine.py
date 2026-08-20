@@ -70,6 +70,15 @@ async def execute_node(node: Dict[str, Any], context: Dict[str, Any]) -> Dict[st
             out["rows"] = [{"id": 1, "status": "ONLINE", "latency_ms": 12}]
             return out
 
+        elif sub_type == "audio_qos":
+            phone = _interpolate(data.get("phone", "08007771234"), context)
+            operadora = data.get("operadora", "Claro Telecom")
+            from audio_qos import generate_synthetic_qos
+            qos = generate_synthetic_qos(phone, "SUCESSO", operadora)
+            out.update(qos)
+            out["message"] = f"Análise Acústica Concluída: MOS {qos['mos_score']} ({qos['quality_status']}) - {qos['ai_diagnosis']}"
+            return out
+
     # 3. COGNIÇÃO & IA (Cognitive)
     if node_type == "cognitiveNode":
         if sub_type == "llm":

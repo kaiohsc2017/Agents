@@ -25,6 +25,7 @@ import {
   BookOpen,
   PhoneForwarded,
   GitFork,
+  Volume2,
 } from 'lucide-react'
 import { canRead } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
@@ -37,6 +38,7 @@ export type Page =
   | 'dashboard'
   | 'modulo2'
   | 'modulo3'
+  | 'audioQos'
   | 'users'
   | 'operadoras'
   | 'cadastro0800'
@@ -125,6 +127,7 @@ export function AppLayout({
         items: [
           { page: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', resource: 'telecom.dashboard' },
           { page: 'modulo2', icon: PhoneCall, label: 'Conectividade', resource: 'telecom.modulo2' },
+          { page: 'audioQos', icon: Volume2, label: 'Qualidade de Áudio (QoS)', resource: 'telecom.qos' },
           { page: 'modulo3', icon: AlertTriangle, label: 'Monitoramento Zabbix', resource: 'telecom.modulo3' },
         ],
       },

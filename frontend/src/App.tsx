@@ -11,6 +11,7 @@ import { ThemeProvider } from './theme/theme-context'
 const Dashboard           = lazy(() => import('./components/Dashboard'))
 const ModuloConectividade = lazy(() => import('./components/ModuloConectividade'))
 const ModuloAlertas       = lazy(() => import('./components/ModuloAlertas'))
+const AudioQosView        = lazy(() => import('./components/AudioQosView'))
 const Softphone           = lazy(() => import('./components/Softphone'))
 const Users               = lazy(() => import('./components/Users'))
 const Operadoras          = lazy(() => import('./components/Operadoras'))
@@ -88,6 +89,7 @@ const PAGE_RESOURCE: Partial<Record<Page, string>> = {
   dashboard:    'telecom.dashboard',
   modulo2:      'telecom.modulo2',
   modulo3:      'telecom.modulo3',
+  audioQos:     'telecom.qos',
   users:        'telecom.users',
   operadoras:   'telecom.operadoras',
   cadastro0800: 'telecom.0800',
@@ -126,7 +128,7 @@ export default function App() {
   const pageFromHash = (): Page => {
     const hash = window.location.hash.replace('#', '').trim() as Page
     const valid: Page[] = [
-      'dashboard','modulo2','modulo3','users','operadoras','cadastro0800','linhas','settings','audit','logs','accessGroups','release','agents',
+      'dashboard','modulo2','modulo3','audioQos','users','operadoras','cadastro0800','linhas','settings','audit','logs','accessGroups','release','agents',
       ...AGENTS_SUBPAGES,
     ]
     if (!valid.includes(hash)) return 'dashboard'
@@ -221,6 +223,7 @@ export default function App() {
               <ErrorBoundary>
                 {page === 'dashboard'    && <Dashboard />}
                 {page === 'modulo2'      && <ModuloConectividade />}
+                {page === 'audioQos'     && <AudioQosView />}
                 {page === 'modulo3'      && <ModuloAlertas />}
                 {page === 'users'        && <Users />}
                 {page === 'operadoras'   && <Operadoras />}

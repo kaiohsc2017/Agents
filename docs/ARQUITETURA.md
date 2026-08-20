@@ -204,10 +204,22 @@ flowchart LR
 
 A Plataforma de Agentes IA foi unificada diretamente dentro do repositório React 19 principal (`frontend/src/components/agents/`), eliminando o encapsulamento por `<iframe>`:
 - **Padrão Visual Corporativo ReportECH:** Uso consistente de tipografia Geist, paleta com variáveis CSS, Badges semânticos de status (`idle`, `running`, `success`, `error`, `paused`), Cards e Tabelas padronizadas.
-- **Roteamento SPA Dinâmico:** Subpáginas de agentes (`agDashboard`, `agAgents`, `agServers`, `agKnowledge`, `agLogs`, `agAlerts`, `agSecrets`, `agLlm`) renderizadas diretamente pelo roteador do AgentIA com controle de acesso por RBAC.
+- **Roteamento SPA Dinâmico:** Subpáginas de agentes (`agDashboard`, `agAgents`, `agServers`, `agKnowledge`, `agLogs`, `agAlerts`, `agSecrets`, `agLlm`, `agFlows`) renderizadas diretamente pelo roteador do AgentIA com controle de acesso por RBAC.
 - **Streaming WebSockets:** Conexão direta com `/agents/ws/logs/{agent_id}` para logs em tempo real sem intermediários.
 
-### 4.5. Monitoramento e Alertas Zabbix (Módulo 3)
+### 4.5. Agent Flow Canvas & Multi-Agent Swarm (Orquestrador Visual DAG Low-Code)
+
+O **Agent Flow Canvas** é o motor de orquestração visual de colaboração multi-agente do AgentIA:
+- **Modelo de Grafo Acíclico Dirigido (DAG):** Permite encadear múltiplos agentes, gatilhos de telefonia/infraestrutura, nós cognitivos (LLM + RAG) e atuadores de remediação em uma esteira autônoma de causa e efeito.
+- **Categorias de Blocos Visuais:**
+  1. **⚡ Gatilhos (Triggers):** Falha em testes de 0800/DID (Módulo 2), Agendamentos Temporais Cron, Alarmes Zabbix ou Webhooks.
+  2. **🔍 Coletores (Actions):** Execuções de comandos SSH em servidores Linux, consultas SQL em bancos corporativos e requisições HTTP REST.
+  3. **🧠 Cognição & Decisão (Cognitive Nodes):** Avaliação de logs por LLMs (Google Gemini 2.5 Flash, Claude, OpenAI), consultas semânticas à base SOP via RAG vetorial e ramificações condicionais.
+  4. **🚀 Atuadores & Auto-Cura (Actuators):** Failover dinâmico de troncos SIP via Asterisk AMI, originação de chamadas de voz com aviso falado e disparo de alertas formatados no Telegram/Jira.
+- **Interpolação de Contexto em Tempo Real:** Mecanismo de templates `{{node_id.campo}}` que repassa payloads de saída de um nó como variáveis de entrada para os nós subsequentes do DAG.
+- **Rastreabilidade e Linha do Tempo:** Persistência transacional em `agent_flows`, `flow_executions` e `flow_execution_steps` com telemetria precisa de duração em milissegundos e status por etapa.
+
+### 4.6. Monitoramento e Alertas Zabbix (Módulo 3)
 
 1. **Polling Scheduler:** O backend executa polling periódico (configurável via `ZABBIX_POLL_INTERVAL_MINUTES`) na API JSON-RPC do Zabbix.
 2. **Filtragem de Severidade:** Apenas incidentes ativos com severidade igual ou superior a `ZABBIX_MIN_SEVERITY` (Padrão: 4 — High / 5 — Disaster) entram na esteira de tratamento.

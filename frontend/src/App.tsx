@@ -30,6 +30,7 @@ const AgentsLogs          = lazy(() => import('./components/agents/AgentsLogs'))
 const AgentsAlerts        = lazy(() => import('./components/agents/AgentsAlerts'))
 const AgentsSecrets       = lazy(() => import('./components/agents/AgentsSecrets'))
 const AgentsLlmSettings   = lazy(() => import('./components/agents/AgentsLlmSettings'))
+const AgentsFlows         = lazy(() => import('./components/agents/AgentsFlows').then(m => ({ default: m.AgentsFlows })))
 
 // ─── ErrorBoundary ─────────────────────────────────────────────────────────────
 class ErrorBoundary extends Component<
@@ -239,6 +240,7 @@ export default function App() {
                 {page === 'agAlerts'     && <AgentsAlerts />}
                 {page === 'agSecrets'    && <AgentsSecrets canWrite={authSessionFromToken(token).hasWrite('agents.secrets')} />}
                 {page === 'agLlm'        && <AgentsLlmSettings canWrite={authSessionFromToken(token).hasWrite('agents.llm')} />}
+                {page === 'agFlows'      && <AgentsFlows />}
               </ErrorBoundary>
             </Suspense>
 

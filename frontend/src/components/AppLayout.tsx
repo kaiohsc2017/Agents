@@ -24,6 +24,7 @@ import {
   Radio,
   BookOpen,
   PhoneForwarded,
+  GitFork,
 } from 'lucide-react'
 import { canRead } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +55,7 @@ export type Page =
   | 'agAlerts'
   | 'agSecrets'
   | 'agLlm'
+  | 'agFlows'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -146,6 +148,7 @@ export function AppLayout({
           },
           { page: 'agSecrets', icon: KeyRound, label: 'Secrets Vault', resource: 'agents.secrets' },
           { page: 'agLlm', icon: Settings, label: 'Configurações IA', resource: 'agents.llm' },
+          { page: 'agFlows', icon: GitFork, label: 'Flow Canvas (DAG)', resource: 'agents.flows' },
         ],
       },
       {

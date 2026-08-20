@@ -10,7 +10,7 @@ from jose import jwt as _jwt, JWTError
 import asyncio, json, os
 
 from database import init_db
-from routers import agents, servers, executions, reports, knowledge
+from routers import agents, servers, executions, reports, knowledge, flows
 from routers import llm_config
 from routers import system
 from scheduler import AgentScheduler
@@ -127,6 +127,7 @@ app.include_router(servers.router,    prefix="/api/servers",    tags=["servers"]
 app.include_router(executions.router, prefix="/api/executions", tags=["executions"])
 app.include_router(reports.router,    prefix="/api/reports",    tags=["reports"])
 app.include_router(knowledge.router,  prefix="/api/knowledge",  tags=["knowledge"])
+app.include_router(flows.router,      prefix="/api/flows",      tags=["flows"])
 app.include_router(llm_config.router, prefix="/api/llm",        tags=["llm"])
 app.include_router(system.router,     prefix="/api/system",     tags=["system"])
 

@@ -184,6 +184,41 @@ A plataforma de Agentes Autônomos está **nativamente integrada** à interface 
 6. 🚨 **Central de Alertas:** Histórico detalhado de notificações disparadas automaticamente pelos agentes para Telegram, E-mail corporativo ou Webhook.
 7. 🔑 **Secrets Vault:** Cofre seguro de credenciais por agente, permitindo utilizar senhas e tokens nos comandos com a sintaxe `{{NOME_DA_CHAVE}}`.
 8. ⚙️ **Configurações de IA & LLMs:** Painel para alternar entre provedores de IA (Google Gemini, Anthropic Claude, OpenAI, Ollama), selecionar modelos e realizar testes de prompt ao vivo.
+9. 🧩 **Agent Flow Canvas (DAG Swarm):** Estúdio visual interativo *drag-and-drop* no padrão ReportECH para criação e orquestração de fluxos multi-agente sem código.
+
+#### 3.4.1. Como Usar o Agent Flow Canvas (Orquestrador Visual DAG)
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ [🧩] Agent Flow Canvas: "Auto-Remediação de Tronco 0800"         [ Salvar ] [ Testar ▶ ] │
+├───────────────────────┬─────────────────────────────────────────────────┬────────────────┤
+│ PALETA LATERAL        │ WORKSPACE INTERATIVO                            │ PROPRIEDADES   │
+├───────────────────────┼─────────────────────────────────────────────────┼────────────────┤
+│ ⚡ Gatilhos           │   ┌──────────────────┐                          │ Título do Nó:  │
+│  [⏰] Cron / Horário  │   │ 📞 Falha no 0800 │ (Gatilho)                │ [Avaliação IA] │
+│  [📞] Falha Telecom   │   └────────┬─────────┘                          │                │
+│                       │            │                                    │ Modelo:        │
+│ 🔍 Coletores          │            ▼                                    │ [Gemini 2.5]   │
+│  [💻] Diagnóstico SSH │   ┌──────────────────┐                          │                │
+│  [🗄️] Consulta SQL    │   │ 💻 Diagnóstico   │ (SSH Asterisk)           │ Prompt:        │
+│                       │   └────────┬─────────┘                          │ [Decida rota..]│
+│ 🧠 Cognição & Decisão │            │                                    │                │
+│  [🤖] Raciocínio LLM  │            ▼                                    │ Variáveis:     │
+│  [📚] Manuais RAG     │   ┌──────────────────┐                          │ {{node_ssh.out}}│
+│                       │   │ 🤖 Raciocínio IA │ (Gemini Flash + SOP RAG) │                │
+│ 🚀 Atuadores / Saída  │   └────────┬─────────┘                          │                │
+│  [📲] Alerta Telegram │            │                                    │                │
+│  [🔄] Failover PBX    │            ▼                                    │                │
+│  [📞] Chamada de Voz  │   ┌──────────────────┐                          │                │
+│                       │   │ 🔄 Comutar Rota  │ (Atuador Asterisk)       │                │
+│                       │   └──────────────────┘                          │                │
+└───────────────────────┴─────────────────────────────────────────────────┴────────────────┘
+```
+
+1. **Adicionar Blocos ao Canvas:** Clique em qualquer bloco na paleta esquerda para instanciar um novo nó no centro da tela.
+2. **Conectar os Nós:** Arraste a bolinha de conexão da borda direita de um bloco até a borda esquerda do próximo bloco para criar uma dependência no DAG.
+3. **Configurar Parâmetros:** Clique em qualquer nó para abrir o painel de propriedades na lateral direita, personalizando comandos Bash, modelos de IA, canais Telegram ou ramais de telefonia.
+4. **Testar Imediatamente:** Clique em **Testar Fluxo ▶** para executar a automação de ponta a ponta e acompanhar a linha do tempo com a duração e payload de saída de cada nó.
 
 ---
 

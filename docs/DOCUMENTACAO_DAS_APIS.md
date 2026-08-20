@@ -210,6 +210,55 @@ curl -s -X GET "https://agentia.voiphash.com.br/api/v1/connectivity/results?page
 }
 ```
 
+### 5.4. Agent Flow Canvas & Multi-Agent Swarm (DAG Engine)
+
+- **Listar Fluxos Cadastrados:** `GET /agents/api/flows/`
+- **Detalhar Fluxo com Nós e Arestas:** `GET /agents/api/flows/{flow_id}`
+- **Criar Novo Fluxo:** `POST /agents/api/flows/`
+- **Atualizar Metadados ou Grafo:** `PUT /agents/api/flows/{flow_id}`
+- **Excluir Fluxo:** `DELETE /agents/api/flows/{flow_id}`
+- **Disparar Execução DAG Imediata:** `POST /agents/api/flows/{flow_id}/run`
+  - **Payload:** `{"trigger_source": "manual_ui", "trigger_data": {}}`
+  - **Retorno:** `{"status": "executed", "execution_id": "<UUID>", "flow_id": "<UUID>"}`
+- **Listar Histórico de Execuções do Fluxo:** `GET /agents/api/flows/{flow_id}/executions`
+- **Detalhes da Linha do Tempo & Passos por Nó:** `GET /agents/api/flows/executions/{execution_id}/details`
+
+#### Exemplo de Resposta de Detalhes da Execução (`GET /agents/api/flows/executions/{id}/details`):
+```json
+{
+  "execution": {
+    "id": "a7f8836c-2e92-421e-8d2f-d458b045a845",
+    "flow_id": "a0000000-0000-0000-0000-000000000001",
+    "flow_name": "Auto-Remediação de Tronco SIP & 0800",
+    "trigger_source": "automated_test",
+    "status": "success",
+    "duration_s": 0.935,
+    "started_at": "2026-08-20T00:22:25.100Z",
+    "finished_at": "2026-08-20T00:22:26.035Z"
+  },
+  "steps": [
+    {
+      "id": "d1c2b3a4-...",
+      "node_id": "node_trigger",
+      "node_type": "triggerNode",
+      "node_name": "Falha em Teste 0800",
+      "status": "success",
+      "duration_ms": 153,
+      "output_payload": { "status": "success", "message": "Gatilho disparado" }
+    },
+    {
+      "id": "e2d3c4b5-...",
+      "node_id": "node_ai",
+      "node_type": "cognitiveNode",
+      "node_name": "Raciocínio IA (Gemini 2.5)",
+      "status": "success",
+      "duration_ms": 154,
+      "output_payload": { "ai_analysis": "Decisão IA: Comutar rota para contingência." }
+    }
+  ]
+}
+```
+
 ---
 
 ## 6. APIs de Configurações e Infraestrutura (Docker-Helper)

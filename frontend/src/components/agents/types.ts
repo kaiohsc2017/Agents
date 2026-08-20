@@ -153,3 +153,85 @@ export interface LlmTestResult {
   response?: string;
   error?: string;
 }
+
+// ── Flow Canvas (Pilar 5) ───────────────────────────────────────────────────
+
+export interface FlowNodeData {
+  label: string;
+  subtext?: string;
+  triggerType?: 'manual' | 'cron' | 'telecom_alert' | 'zabbix' | 'webhook';
+  actionType?: 'ssh' | 'sql' | 'http' | 'log';
+  cognitiveType?: 'llm' | 'rag' | 'condition';
+  actuatorType?: 'telegram' | 'asterisk_action' | 'voice_call' | 'jira';
+  cmd?: string;
+  query?: string;
+  url?: string;
+  model?: string;
+  prompt?: string;
+  condition?: string;
+  chat?: string;
+  action?: string;
+  trunk?: string;
+  phone?: string;
+  [key: string]: any;
+}
+
+export interface FlowNode {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  data: FlowNodeData;
+}
+
+export interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  animated?: boolean;
+  label?: string;
+}
+
+export interface FlowGraphData {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+export interface AgentFlow {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  trigger_type: string;
+  trigger_config: Record<string, any>;
+  node_count?: number;
+  graph_data?: FlowGraphData;
+  created_at: string;
+  updated_at?: string;
+  created_by?: string;
+}
+
+export interface FlowExecutionStep {
+  id: string;
+  node_id: string;
+  node_type: string;
+  node_name?: string;
+  status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
+  input_payload?: any;
+  output_payload?: any;
+  duration_ms?: number;
+  started_at: string;
+  finished_at?: string;
+}
+
+export interface FlowExecution {
+  id: string;
+  flow_id: string;
+  flow_name: string;
+  trigger_source: string;
+  status: 'running' | 'success' | 'failed' | 'partial';
+  started_at: string;
+  finished_at?: string;
+  duration_s?: number;
+  error_message?: string;
+  context?: Record<string, any>;
+}

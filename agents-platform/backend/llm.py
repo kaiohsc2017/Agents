@@ -323,6 +323,34 @@ Seja direto e técnico. Responda em português."""
         logger.error("[llm] erro ao chamar %s/%s: %s", cfg.provider, cfg.model, e)
         return f"[Erro IA ({cfg.provider}/{cfg.model}) — ver logs do backend para detalhes]"
 
+async def ask_llm(user_prompt: str, system_prompt: str = "") -> str:
+    """Invoca o provedor LLM configurado com um prompt livre."""
+    ok, reason = cfg.is_ready()
+    if not ok:
+        return f"[IA desabilitada: {reason}]"
+
+    full_prompt = f"{system_prompt}\n\n{user_prompt}" if system_prompt else user_prompt
+    try:
+        if cfg.provider == "google":
+            return await _call_google(full_prompt)
+        elif cfg.provider == "anthropic":
+            return await _call_anthropic(full_prompt)
+        elif cfg.provider == "openai":
+            return await _call_openai(full_prompt)
+        elif cfg.provider == "minimax":
+            return await _call_minimax(full_prompt)
+        elif cfg.provider == "openai_compat":
+            return await _call_openai(full_prompt, base_url=cfg.compat_url,
+                                       api_key=cfg.compat_key or None)
+        else:
+            return f"[Provedor '{cfg.provider}' não suportado]"
+    except Exception as e:
+        logger.error("[llm] erro ao chamar %s/%s: %s", cfg.provider, cfg.model, e)
+        return f"[Erro IA ({cfg.provider}/{cfg.model}) — ver logs do backend para detalhes]"
+
+ask_prompt = ask_llm
+
 def is_enabled() -> bool:
     ok, _ = cfg.is_ready()
     return ok
+

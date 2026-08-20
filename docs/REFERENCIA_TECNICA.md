@@ -111,13 +111,15 @@ As migrações SQL residem em `backend/src/main/resources/db/migration/`:
 - Configuração modular através de templates dinâmicos processados pelo backend (`AsteriskConfigService`).
 - Tipos de Transporte: `transport-udp` (5060 interno / 5062 externo) e `transport-wss` (8088 interno para WebRTC).
 - Endpoints de Ramal:
-  - `1001`, `1002`: Ramais SIP físicos / softphones de teste.
+  - `1001`, `1002`: Ramais SIP físicos / softphones de teste. `1001` também dispara o fluxo de
+    teste local do Módulo 3 (`FLOW_TYPE=ZABBIX_ALERT`, mesmo `AudioSocket(...,ai-agent:9092)`
+    usado pelo alerta real, sem depender do Zabbix).
   - `9001`, `9002`: Ramais WebRTC vinculados ao softphone integrado do painel web.
-  - `2000-2999`: Faixa reservada no dialplan para URAs de voz. **⚠️ NÃO DISPONÍVEL NESTA
-    INSTALAÇÃO** — o dialplan chama `AudioSocket(...,ai-agent:9092)`, mas o serviço
-    `ai-agent` não existe nesta stack (nem no `docker-compose.yml`, nem como diretório no
-    repositório). Toda chamada para esta faixa recebe um aviso de "função não disponível" e
-    é encerrada (correção aplicada em 2026-08-19, auditoria achado G1).
+  - **Módulo 1 (URA multi-instância, faixa `2000-2999`) foi removido do dialplan em 2026-08-20**
+    — decisão de produto definitiva, não uma indisponibilidade temporária. O único contexto com
+    `AudioSocket` ativo hoje, além do ramal de teste `1001` acima, é `[asteriskia-alert]`
+    (Módulo 3), atendido pelo serviço `ai-agent` (`ai-agent/src/`, container `agentia-ai-agent`,
+    porta interna `9092`, sem porta publicada ao host).
 
 ### 5.2. Asterisk Manager Interface (AMI)
 - O backend Spring Boot conecta-se à porta `5038/tcp` do Asterisk através de conexão TCP persistente.

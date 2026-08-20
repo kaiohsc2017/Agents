@@ -163,11 +163,15 @@ Exibe a esteira de incidentes críticos de infraestrutura capturados via integra
 ```
 
 #### Funcionalidades:
-- **Discagem Automática:** Ao detectar um incidente com severidade `>= High`, o sistema localiza o plantonista e origina a ligação. **⚠️ A sintetização por IA da causa raiz NÃO ESTÁ
-  DISPONÍVEL nesta instalação** — o serviço que faria essa locução (`ai-agent`) não existe
-  nesta stack; a ligação é atendida e encerrada com um aviso de "função não disponível"
-  (correção aplicada em 2026-08-19, auditoria achado G1).
-- **Botão Rechamar:** Permite forçar uma nova chamada manual para a equipe caso o incidente persista sem reconhecimento (*ACK*) — sujeito à mesma limitação acima.
+- **Discagem Automática:** Ao detectar um incidente com severidade `>= High`, o sistema localiza
+  o plantonista e origina a ligação. A locução por IA da causa raiz **está operacional desde
+  2026-08-20** — o serviço `ai-agent` (Python/asyncio) atende a chamada, narra host/severidade/
+  resumo do incidente por voz (Gemini TTS) e escuta a resposta falada do atendente para
+  classificar o atendimento (Gemini STT + LLM) em `ATENDIDA` (reconhecido), `NAO_ATENDIDA`
+  (recusado/sem resposta compreensível) ou `FALHA` (erro técnico, ex.: indisponibilidade do
+  provedor de IA).
+- **Botão Rechamar:** Permite forçar uma nova chamada manual para a equipe caso o incidente
+  persista sem reconhecimento (*ACK*).
 
 ---
 

@@ -121,6 +121,18 @@ public class SecurityConfig {
                                 .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.dashboard")
                         .requestMatchers(HttpMethod.GET, "/api/v1/suporte/**")
                                 .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.modulo1")
+                        // Consumido pelo ai-agent Python via X-Internal-Key (ver
+                        // InternalKeyFilter) — precisam vir antes dos matchers genéricos de
+                        // /alert-calls/** abaixo, que não concedem ROLE_INTERNAL. Leitura e
+                        // escrita separadas (achado HIGH da revisão de segurança 2026-08-20):
+                        // um matcher único sem HttpMethod concederia PATCH a quem só tem
+                        // PERM_READ_telecom.modulo3, elevação de privilégio vertical.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/alert-calls/by-uuid/**")
+                                .hasAnyAuthority(
+                                        "ROLE_ADMIN", "ROLE_INTERNAL", "PERM_READ_telecom.modulo3")
+                        .requestMatchers("/api/v1/alert-calls/by-uuid/**")
+                                .hasAnyAuthority(
+                                        "ROLE_ADMIN", "ROLE_INTERNAL", "PERM_WRITE_telecom.modulo3")
                         .requestMatchers(HttpMethod.GET, "/api/v1/alert-calls/**")
                                 .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.modulo3")
                         .requestMatchers(HttpMethod.GET, "/api/v1/alert-contacts/**")

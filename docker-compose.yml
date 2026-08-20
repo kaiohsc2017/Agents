@@ -233,6 +233,44 @@ services:
         ipv4_address: 172.16.9.15
 
   # ---------------------------------------------------------------------------
+  # ai-agent — Servidor AudioSocket (Módulo 3: alerta Zabbix por voz)
+  # Atende a porta AudioSocket referenciada pelo contexto [asteriskia-alert]
+  # do dialplan. Sem porta publicada ao host — só rede interna do compose.
+  # ---------------------------------------------------------------------------
+  ai-agent:
+    build:
+      context: ./ai-agent
+      dockerfile: Dockerfile
+    container_name: agentia-ai-agent
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      GEMINI_API_KEY:      ${GEMINI_API_KEY}
+      GEMINI_MODEL_STT:    ${GEMINI_MODEL_STT:-gemini-2.5-flash}
+      GEMINI_MODEL_LLM:    ${GEMINI_MODEL_LLM:-gemini-2.5-flash}
+      GEMINI_MODEL_TTS:    ${GEMINI_MODEL_TTS:-gemini-2.5-flash-preview-tts}
+      INTERNAL_API_KEY:    ${INTERNAL_API_KEY}
+      BACKEND_URL:         http://backend:8080
+      AUDIOSOCKET_HOST:    0.0.0.0
+      AUDIOSOCKET_PORT:    ${AUDIOSOCKET_PORT:-9092}
+    networks:
+      agentia-net:
+        ipv4_address: 172.16.9.17
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 9092), timeout=3).close()"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
   # Agents Backend — FastAPI + Python 3.12 (Plataforma de Agentes IA)
   # ---------------------------------------------------------------------------
   agents-backend:

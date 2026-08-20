@@ -252,13 +252,21 @@ O motor de IA acústica (`audio_qos.py`) atua como auditor perceptual de qualida
 2. **Filtragem de Severidade:** Apenas incidentes ativos com severidade igual ou superior a `ZABBIX_MIN_SEVERITY` (Padrão: 4 — High / 5 — Disaster) entram na esteira de tratamento.
 3. **Fila de Acionamento:** Para cada incidente não reconhecido (*unacknowledged*):
    - Localiza a escala de plantonistas ativa no horário do incidente.
-   - Origina ligação telefônica automática — **⚠️ NÃO DISPONÍVEL NESTA INSTALAÇÃO**: o
-     dialplan do alerta de voz (`[asteriskia-alert]`) depende de `AudioSocket(...,
-     ai-agent:9092)`, e o serviço `ai-agent` não existe nesta stack. A ligação é originada e
-     atendida, mas encerra imediatamente com um aviso de "função não disponível" em vez de
-     sintetizar a causa raiz (correção aplicada em 2026-08-19, auditoria achado G1).
-   - Dispara notificação formatada no Telegram corporativo com botões de ação rápida — esta
-     parte permanece real/operacional, independente da ligação de voz.
+   - Origina ligação telefônica automática via AMI (`AmiOriginateService.originateAlertCall`) —
+     **operacional desde 2026-08-20**: o dialplan do alerta de voz (`[asteriskia-alert]`) cai em
+     `AudioSocket(${MY_UUID},ai-agent:9092)`, atendido pelo serviço `ai-agent` (Python/asyncio,
+     `ai-agent/src/`). O agente busca o incidente via `GET /api/v1/alert-calls/by-uuid/{uuid}`,
+     narra host/severidade/resumo por voz (Gemini TTS), escuta a resposta falada do atendente por
+     alguns segundos, classifica-a (Gemini STT + LLM) em reconhecido/não reconhecido/silêncio, e
+     grava o status final via `PATCH /api/v1/alert-calls/by-uuid/{uuid}`
+     (`ATENDIDA`/`NAO_ATENDIDA`/`FALHA`).
+   - Dispara notificação formatada no Telegram corporativo com botões de ação rápida — inclui o
+     status final da ligação de voz.
+   - **Módulo 1 (URA de abertura de chamado) permanece fora do escopo do AgentIA** — decisão de
+     produto, não uma indisponibilidade temporária. O dialplan não tem mais nenhum contexto de
+     URA/Call Center (podado em 2026-08-20); os únicos contextos com `AudioSocket` ativo hoje são
+     `[asteriskia-alert]` (Módulo 3, real) e o ramal de teste local `1001` (mesmo flow, para
+     validação sem depender do Zabbix real).
 
 ---
 

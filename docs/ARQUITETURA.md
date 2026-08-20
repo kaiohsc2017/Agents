@@ -268,6 +268,20 @@ O motor de IA acústica (`audio_qos.py`) atua como auditor perceptual de qualida
      `[asteriskia-alert]` (Módulo 3, real) e o ramal de teste local `1001` (mesmo flow, para
      validação sem depender do Zabbix real).
 
+**Suíte de testes automatizados (2026-08-20)**: `ai-agent/tests/` (pytest + pytest-asyncio,
+`ai-agent/requirements-dev.txt` — dependências de teste separadas de `requirements.txt` para
+nunca entrarem na imagem Docker de produção) cobre `config.py`, `protocol.py`,
+`services/backend_client.py`, `services/gemini_service.py`, `services/ai_service.py`,
+`flows/zabbix_alert_flow.py` e `main.py` — **98% de cobertura** (`pytest --cov=src`), 66 testes,
+todo componente externo (SDK Gemini, aiohttp, socket AudioSocket) mockado, sem chamada de API real
+nem socket real aberto durante a suíte. Inclui o cenário de erro real já observado em produção
+(cota do Gemini esgotada — HTTP 429 `RESOURCE_EXHAUSTED`) e os dois caminhos de desligamento da
+conexão AudioSocket (`_CleanHangup` para o probe do healthcheck vs. erro de protocolo genuíno).
+**Pendência de validação (não é bug de código)**: a narração de voz do Módulo 3 não pôde ser
+confirmada audível numa chamada real em produção nesta rodada porque a cota diária do Gemini TTS
+estava esgotada (mesmo erro 429 `RESOURCE_EXHAUSTED` coberto pelos testes) — a reverificar quando
+a cota renovar.
+
 ---
 
 ## 5. DevSecOps, Resiliência e Auditoria

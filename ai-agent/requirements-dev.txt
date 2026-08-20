@@ -1,0 +1,12 @@
+# requirements-dev.txt — dependências só de desenvolvimento/teste do ai-agent.
+#
+# Separado de requirements.txt (não requirements.txt em si) porque estas libs
+# nunca devem ir para a imagem Docker de produção (Dockerfile só copia e
+# instala requirements.txt) — mantém a imagem final menor e sem superfície de
+# teste desnecessária em runtime.
+-r requirements.txt
+
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-cov==5.0.0
+pytest-mock==3.14.0

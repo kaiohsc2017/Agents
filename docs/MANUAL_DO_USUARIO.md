@@ -173,6 +173,14 @@ Exibe a esteira de incidentes críticos de infraestrutura capturados via integra
 - **Botão Rechamar:** Permite forçar uma nova chamada manual para a equipe caso o incidente
   persista sem reconhecimento (*ACK*).
 
+> **Nota de validação (2026-08-20):** o serviço `ai-agent` agora tem uma suíte de testes
+> automatizados própria (`ai-agent/tests/`, 98% de cobertura) cobrindo o fluxo de ponta a ponta
+> em ambiente controlado (sem chamada real). Falta ainda confirmar de ouvido, numa chamada real de
+> produção, que a locução do Gemini TTS está audível — a cota diária gratuita do Gemini TTS estava
+> esgotada no momento desta verificação (erro "cota excedida"), impedindo o teste de voz real. Fica
+> pendente reverificar quando a cota renovar; não é um defeito de código, é só uma verificação de
+> áudio ainda não realizada.
+
 ---
 
 ### 3.4. Plataforma Nativa de Agentes IA (8 Visões Especializadas)

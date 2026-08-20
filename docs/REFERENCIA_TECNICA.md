@@ -142,3 +142,32 @@ As migrações SQL residem em `backend/src/main/resources/db/migration/`:
 5. **Custo**: a amostra de 8s (`QOS_SAMPLE_SECONDS` no dialplan) é tempo tarifado por teste; ajuste o valor se o volume de testes crescer.
 
 > Precisão numérica: `silence_pct`/`clipping_pct`/`packet_loss_pct` são `NUMERIC(5,2)` (migration V94) porque uma linha muda real produz 100,00% de silêncio — em `NUMERIC(4,2)` o laudo falhava com *numeric field overflow*. O motor também clampa cada métrica ao domínio da coluna antes de persistir.
+
+### 5.4. Suíte de Testes Automatizados do `ai-agent` (Módulo 3)
+
+Adicionada em 2026-08-20 — o serviço `ai-agent` (Python/asyncio, Módulo 3) não tinha nenhum teste
+automatizado antes desta entrega, apesar de já estar deployado e healthy em produção.
+
+- **Stack**: `pytest` + `pytest-asyncio` (modo `auto`) + `pytest-cov` + `pytest-mock`, declarados em
+  `ai-agent/requirements-dev.txt` (separado de `requirements.txt` — o `Dockerfile` de produção só
+  instala `requirements.txt`, então as dependências de teste nunca entram na imagem final).
+  Configuração em `ai-agent/pytest.ini` (`pythonpath = src`, espelhando o `WORKDIR /app/src` real
+  do container).
+- **Cobertura obtida: 98%** (`pytest --cov=src --cov-report=term-missing`), 66 testes em
+  `ai-agent/tests/` (um arquivo por módulo de `src/`): `test_config.py`, `test_protocol.py`,
+  `test_backend_client.py`, `test_gemini_service.py`, `test_ai_service.py`,
+  `test_zabbix_alert_flow.py`, `test_main.py`.
+- **Nada externo é chamado de verdade**: o SDK `google-genai`, o `aiohttp.ClientSession` e os
+  `asyncio.StreamReader`/`StreamWriter` do AudioSocket são sempre mockados/substituídos por dublês
+  em memória — a suíte nunca abre socket real nem chama a API do Gemini/backend.
+  Cobre explicitamente o erro real já observado em produção (cota do Gemini esgotada, HTTP 429
+  `RESOURCE_EXHAUSTED` via `google.genai.errors.ClientError`) nos três métodos de
+  `gemini_service.py` que chamam o SDK, e os dois caminhos de encerramento de conexão do
+  `zabbix_alert_flow.py` — `_CleanHangup` (desligamento normal, ex.: probe do healthcheck) versus
+  erro de protocolo genuíno (`ProtocolError`/`IncompleteReadError`/timeout).
+- **Nenhum bug real de produção foi encontrado** por esta rodada de testes — `src/` permanece sem
+  alteração de comportamento.
+- **Pendência de validação, não de código**: a locução do Gemini TTS não pôde ser confirmada
+  audível numa chamada real de produção nesta rodada porque a cota diária do Gemini TTS estava
+  esgotada (mesmo erro 429 `RESOURCE_EXHAUSTED` coberto pelos testes) — a reverificar quando a
+  cota renovar.

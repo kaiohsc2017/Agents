@@ -10,6 +10,17 @@ import wave
 from typing import Any, Dict, List, Optional
 
 
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    """
+    Mantém a métrica dentro do domínio aceito pela coluna do banco.
+
+    Defesa em profundidade junto da V94: uma gravação de linha muda produz
+    silence_pct = 100.0, que estourava numeric(4,2) e derrubava a análise com
+    HTTP 500 — exatamente o caso que o motor precisa reportar.
+    """
+    return round(max(minimum, min(maximum, float(value))), 2)
+
+
 def analyze_wav_file(file_path: str, operadora: str = "Padrão") -> Dict[str, Any]:
     """
     Analisa um arquivo de áudio PCM WAV extraindo métricas acústicas reais,
@@ -150,12 +161,16 @@ def analyze_wav_file(file_path: str, operadora: str = "Padrão") -> Dict[str, An
                 ai_diag = f"Degradação acústica detectada (MOS {mos_score}). Picotamento ou ruído elevado ({noise_db} dB)."
 
             return {
-                "mos_score": mos_score,
-                "jitter_ms": jitter_ms,
-                "packet_loss_pct": packet_loss_pct,
-                "noise_db": noise_db,
-                "clipping_pct": clipping_pct,
-                "silence_pct": silence_pct,
+                # measured=True apenas aqui: é o único caminho que de fato abriu e mediu
+                # um WAV. Todo fallback passa por generate_synthetic_qos (measured=False),
+                # para o laudo nunca ser apresentado como medição sem ter sido uma.
+                "measured": True,
+                "mos_score": _clamp(mos_score, 1.0, 4.5),
+                "jitter_ms": _clamp(jitter_ms, 0.0, 999.0),
+                "packet_loss_pct": _clamp(packet_loss_pct, 0.0, 100.0),
+                "noise_db": _clamp(noise_db, -90.0, -20.0),
+                "clipping_pct": _clamp(clipping_pct, 0.0, 100.0),
+                "silence_pct": _clamp(silence_pct, 0.0, 100.0),
                 "duration_seconds": duration_s,
                 "quality_status": quality_status,
                 "ai_diagnosis": ai_diag,
@@ -202,12 +217,14 @@ def generate_synthetic_qos(phone_number: str, status: str = "SUCESSO", operadora
     waveform_data = [min(100, max(5, int(p * scale + (h % 10) - 5))) for p in base_points]
 
     return {
-        "mos_score": mos_score,
-        "jitter_ms": jitter_ms,
-        "packet_loss_pct": packet_loss,
-        "noise_db": noise_db,
+        # Estimativa, não medição — quem consome usa isso para marcar data_source.
+        "measured": False,
+        "mos_score": _clamp(mos_score, 1.0, 4.5),
+        "jitter_ms": _clamp(jitter_ms, 0.0, 999.0),
+        "packet_loss_pct": _clamp(packet_loss, 0.0, 100.0),
+        "noise_db": _clamp(noise_db, -90.0, -20.0),
         "clipping_pct": 0.0 if mos_score > 3.5 else 1.2,
-        "silence_pct": silence_pct,
+        "silence_pct": _clamp(silence_pct, 0.0, 100.0),
         "duration_seconds": 14.0,
         "quality_status": quality_status,
         "ai_diagnosis": ai_diag,

@@ -284,6 +284,7 @@ O AgentIA audita a qualidade perceptual da voz (conforme a norma ITU-T P.800/G.1
   - 🔵 **Boa (MOS $3.75 - 4.14$):** Padrão de chamada telefônica celular HD.
   - 🟡 **Regular (MOS $3.10 - 3.74$):** Leve chiado ou compressão de canal.
   - 🔴 **Degradada (MOS $< 3.10$):** Picotamento de áudio, ruído intenso ou linha muda.
+- **Medição real x estimativa:** o sistema grava 8 segundos do áudio recebido em cada teste de conectividade e mede esse arquivo. Quando existe gravação, o laudo aparece como **"Medição real da gravação da chamada"**. Quando não existe (chamada não atendida, por exemplo), o valor é uma **estimativa** — exibida com o sinal `~` antes do número (ex.: `MOS ~2.15`) e identificada como tal no laudo. O cartão "Conformidade com SLA" mostra quantas das chamadas do período têm medição real.
 - **Waveform & Espectrograma:** No histórico do teste ou na tela dedicada de QoS, clique no badge de MOS para inspecionar a onda sonora e o laudo explicativo da Inteligência Artificial.
 - **Auto-Cura no Flow Canvas:** Se uma linha sofrer degradação acústica repetida, o gatilho `Degradação MOS` no Flow Canvas dispara a comutação de tronco no Asterisk automaticamente.
 

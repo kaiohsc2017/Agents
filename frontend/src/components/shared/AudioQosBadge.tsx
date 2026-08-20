@@ -10,6 +10,8 @@ export interface AudioQosData {
   quality_status: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'DEGRADED' | 'CRITICAL';
   ai_diagnosis?: string;
   waveform_data?: number[];
+  /** 'real' = métricas medidas de um WAV gravado; 'synthetic' = estimativa sem gravação (V93). */
+  data_source?: 'real' | 'synthetic';
 }
 
 interface AudioQosBadgeProps {
@@ -61,6 +63,7 @@ export function AudioQosBadge({ qos, size = 'sm' }: AudioQosBadgeProps) {
   };
 
   const style = getBadgeStyle();
+  const isMeasured = qos.data_source === 'real';
 
   return (
     <div className="relative inline-block">
@@ -70,10 +73,14 @@ export function AudioQosBadge({ qos, size = 'sm' }: AudioQosBadgeProps) {
         className={`inline-flex items-center gap-1.5 rounded-md border font-mono font-bold transition-all cursor-pointer select-none ${style.bg} ${
           size === 'sm' ? 'text-[10px] px-1.5 py-0.5' : size === 'md' ? 'text-xs px-2.5 py-1' : 'text-sm px-3 py-1.5'
         }`}
-        title="Clique para ver o laudo acústico de IA"
+        title={
+          isMeasured
+            ? 'Medição acústica real — clique para ver o laudo de IA'
+            : 'Estimativa (sem gravação disponível) — clique para ver o laudo de IA'
+        }
       >
         <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-        <span>MOS {mos.toFixed(2)}</span>
+        <span>MOS {isMeasured ? '' : '~'}{mos.toFixed(2)}</span>
         {size !== 'sm' && <span className="opacity-80 font-normal">({style.label})</span>}
       </button>
 
@@ -90,6 +97,19 @@ export function AudioQosBadge({ qos, size = 'sm' }: AudioQosBadgeProps) {
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${style.bg}`}>
                 MOS {mos.toFixed(2)}
               </span>
+            </div>
+
+            {/* Origem do laudo — nunca apresentar estimativa como medição */}
+            <div
+              className={`text-[10px] font-medium px-2 py-1 rounded-md border ${
+                isMeasured
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+                  : 'bg-muted/50 text-muted-foreground border-border/60'
+              }`}
+            >
+              {isMeasured
+                ? 'Medição real da gravação da chamada'
+                : 'Estimativa — nenhuma gravação disponível para esta chamada'}
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center">

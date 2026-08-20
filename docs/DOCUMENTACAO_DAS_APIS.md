@@ -334,6 +334,19 @@ curl -s -X GET "https://agentia.voiphash.com.br/api/v1/connectivity/results?page
 
 Base URL: `https://agentia.voiphash.com.br/agents/api/audio-qos`
 
+### 8.0. Origem do dado — medição real x estimativa (`data_source`)
+
+Todo laudo acústico informa de onde vieram os números:
+
+| `data_source` | Significado |
+|---|---|
+| `real` | MOS/jitter/ruído **medidos** do WAV gravado durante a chamada. O dialplan (contexto `asteriskia-test`) atende, grava uma amostra de 8s via `MixMonitor` e registra o caminho em `test_results.recording_path` chamando `POST /api/v1/internal/connectivity/qos-recording` (autenticado por `X-Internal-Key`, aceita apenas `.wav` dentro de `/var/spool/asterisk/monitor`). |
+| `synthetic` | **Estimativa** determinística, usada quando não existe gravação para a chamada (chamada não atendida, teste anterior a esta funcionalidade, ou WAV ilegível/em formato não suportado). Nunca é apresentada como medição — a interface prefixa o valor com `~`. |
+
+O `GET /summary` expõe `real_measured` (total e por operadora) para deixar explícito quanto do
+período foi realmente medido. Se um laudo sintético já salvo passa a ter gravação disponível, a
+próxima consulta a `GET /test/{id}` remede o áudio e promove o registro a `real` uma única vez.
+
 ### 8.1. Resumo Executivo e Ranking de Operadoras
 - **Método:** `GET /summary`
 - **Descrição:** Retorna estatísticas consolidadas de qualidade acústica, MOS Score médio global, conformidade com SLA e ranking por operadora.
@@ -346,13 +359,15 @@ Base URL: `https://agentia.voiphash.com.br/agents/api/audio-qos`
   "avg_jitter_ms": 1.75,
   "avg_noise_db": -62.4,
   "sla_pass_pct": 97.5,
+  "real_measured": 86,
   "mos_by_operadora": [
     {
       "operadora": "Vivo / Telefônica",
       "avg_mos": 4.38,
       "avg_jitter_ms": 1.60,
       "avg_noise_db": -64.2,
-      "tests_count": 48
+      "tests_count": 48,
+      "real_measured": 40
     },
     {
       "operadora": "Claro Telecom",
@@ -381,6 +396,8 @@ Base URL: `https://agentia.voiphash.com.br/agents/api/audio-qos`
   "noise_db": -63.1,
   "packet_loss_pct": 0.0,
   "quality_status": "EXCELLENT",
+  "data_source": "real",
+  "recording_path": "/var/spool/asterisk/monitor/qos-test-8.wav",
   "ai_diagnosis": "Voz nítida com excelente inteligibilidade (MOS 4.35). Piso de ruído desprezível (-63.1 dB) e 0% de perda de pacotes.",
   "waveform_data": [20, 35, 60, 85, 95, 75, 50, 65, 80, 90, 85, 70, 45, 30, 55, 70, 85, 60]
 }

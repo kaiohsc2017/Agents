@@ -23,12 +23,15 @@ interface QosSummary {
   avg_noise_db: number;
   sla_pass_pct: number;
   degraded_count: number;
+  /** Quantas das avaliações vieram de medição real de gravação (o resto é estimativa). */
+  real_measured?: number;
   mos_by_operadora: Array<{
     operadora: string;
     avg_mos: number;
     avg_jitter_ms: number;
     avg_noise_db: number;
     tests_count: number;
+    real_measured?: number;
   }>;
   recent_metrics: Array<AudioQosData & {
     id: string;
@@ -169,7 +172,10 @@ export function AudioQosView() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-[11px] text-muted-foreground">
-              {data?.total_evaluated || 0} chamadas auditadas no período
+              {data?.total_evaluated || 0} chamadas auditadas no período ·{' '}
+              <span className={(data?.real_measured || 0) > 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : ''}>
+                {data?.real_measured || 0} com medição real
+              </span>
             </div>
           </CardContent>
         </Card>

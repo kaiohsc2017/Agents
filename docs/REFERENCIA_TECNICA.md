@@ -87,6 +87,8 @@ As migrações SQL residem em `backend/src/main/resources/db/migration/`:
 - `V27` a `V90`: Configurações em runtime, sincronização Active Directory / LDAP e parâmetros de IA.
 - `V91__create_agent_flows_tables.sql`: Tabelas do motor DAG `agent_flows`, `flow_executions` e `flow_execution_steps`.
 - `V92__create_audio_qos_tables.sql`: Métricas de Audio QoS (MOS ITU-T P.800, Jitter, Ruído dB, Waveform e Laudo IA).
+- `V93__connectivity_qos_recording.sql`: `test_results.recording_path` (WAV gravado no teste) e `audio_qos_metrics.data_source` (`real` | `synthetic`).
+- `V94__audio_qos_percent_precision.sql`: percentuais de QoS para `NUMERIC(5,2)` — 100,00% de silêncio (linha muda) não cabia em `NUMERIC(4,2)`.
 
 ### 4.2. Schema da Plataforma de Agentes, Motor DAG & IA Acústica
 - `agents` & `agent_executions`: Cadastro e histórico de robôs de automação (SSH, SQL, HTTP, Logs).
@@ -125,3 +127,12 @@ As migrações SQL residem em `backend/src/main/resources/db/migration/`:
   2. **Detecção de Linha Muda (*One-Way Audio*):** Identifica se a chamada completou com sinalização SIP 200 OK mas não entregou mídia RTP (silêncio superior a 80% do tempo de conversação).
   3. **Degradação de Rota da Operadora:** Detecta ruído de canal em dBFS, distorção espectral (*clipping*) e voz robótica decorrente de oscilações de jitter e perda de pacotes da operadora.
 - **Caso de Uso Corporativo:** Permite aos gestores auditar com precisão a experiência auditiva que os clientes finais vivenciam ao discar para os números 0800 e centrais de atendimento da empresa.
+
+#### 5.3.1. Cadeia da gravação real (medição x estimativa)
+1. **Dialplan** (`[asteriskia-test]`): a chamada originada pelo `ConnectivityScheduler` é atendida (`Answer`), grava 8s do áudio recebido com `MixMonitor(...,b)` — a opção `b` evita WAV vazio quando não há ponte de mídia — e para a gravação.
+2. **Registro do caminho**: o próprio dialplan chama `POST /api/v1/internal/connectivity/qos-recording` (`X-Internal-Key`, `ROLE_INTERNAL`). O `ConnectivityInternalController` só persiste caminhos `.wav` contidos em `/var/spool/asterisk/monitor` — o valor é aberto depois pelo motor acústico, então travessia de diretório é recusada antes de chegar ao banco (`test_results.recording_path`, migration V93).
+3. **Medição**: `analyze_wav_file` (container `agentia-agents-api`, volume `agentia_asterisk_recordings` montado **somente leitura**) mede RMS, piso de ruído, clipping, silêncio e deriva R-Factor/MOS. O laudo é marcado `data_source = 'real'`.
+4. **Sem gravação utilizável** (chamada não atendida, WAV ausente, ilegível ou em formato não suportado como G.729 sem transcodificação): o laudo cai em `generate_synthetic_qos` e é marcado `data_source = 'synthetic'` — a interface nunca mostra estimativa como medição.
+5. **Custo**: a amostra de 8s (`QOS_SAMPLE_SECONDS` no dialplan) é tempo tarifado por teste; ajuste o valor se o volume de testes crescer.
+
+> Precisão numérica: `silence_pct`/`clipping_pct`/`packet_loss_pct` são `NUMERIC(5,2)` (migration V94) porque uma linha muda real produz 100,00% de silêncio — em `NUMERIC(4,2)` o laudo falhava com *numeric field overflow*. O motor também clampa cada métrica ao domínio da coluna antes de persistir.

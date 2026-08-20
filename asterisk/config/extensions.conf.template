@@ -296,12 +296,28 @@ exten => h,1,NoOp(=== Encerrado ===)
 
 ; ---------------------------------------------------------------
 ; Contexto: asteriskia-test (=== MÓDULO 2 ===)
-; Originado pelo Scheduler Python para testes de conectividade.
+; Originado pelo ConnectivityScheduler (backend Java) via AMI Originate —
+; o canal já é o número testado, então quando o destino atende o dialplan
+; entra aqui direto. Não há segunda perna para discar.
+;
+; Audio QoS (V93): grava uma amostra curta do áudio recebido e registra o
+; caminho no backend. Sem esta gravação o motor acústico não tem WAV para
+; medir e cai na estimativa sintética. A amostra custa QOS_SAMPLE_SECONDS de
+; tarifação por teste — ajuste o valor se o volume de testes crescer.
 ; ---------------------------------------------------------------
 [asteriskia-test]
 exten => s,1,NoOp(=== MÓDULO 2: Teste de Conectividade ===)
-exten => s,n,Set(DIAL_TIMEOUT=20)
-exten => s,n,Dial(${PJSIP_CHANNEL},${DIAL_TIMEOUT})
+exten => s,n,Answer()
+exten => s,n,Set(QOS_SAMPLE_SECONDS=8)
+exten => s,n,Set(QOS_REC_FILE=/var/spool/asterisk/monitor/qos-test-${TEST_RESULT_ID}.wav)
+; b = grava apenas quando há ponte de áudio (evita WAV vazio se a mídia não fluir)
+exten => s,n,MixMonitor(${QOS_REC_FILE},b)
+exten => s,n,Wait(${QOS_SAMPLE_SECONDS})
+exten => s,n,StopMixMonitor()
+exten => s,n,Set(CURLOPT(httptimeout)=2)
+exten => s,n,Set(CURLOPT(httpheader)=X-Internal-Key: ${INTERNAL_API_KEY})
+; CURL com segundo argumento envia POST form-urlencoded (comportamento do func_curl)
+exten => s,n,Set(IGNORED_QOS=${CURL(http://backend:8080/api/v1/internal/connectivity/qos-recording,testResultId=${TEST_RESULT_ID}&filePath=${QOS_REC_FILE})})
 exten => s,n,Hangup()
 
 exten => h,1,NoOp(=== Teste encerrado ===)

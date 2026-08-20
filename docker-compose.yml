@@ -271,6 +271,9 @@ services:
     volumes:
       - agentia_knowledge:/app/knowledge_docs
       - /opt/AgentIA/env:/opt/AgentIA/env
+      # Somente leitura: o motor de IA acústica (audio_qos.py) abre os WAVs
+      # gravados pelo Asterisk para medir MOS/jitter/ruído reais (V93).
+      - agentia_asterisk_recordings:/var/spool/asterisk/monitor:ro
     networks:
       agentia-net:
         ipv4_address: 172.16.9.16

@@ -50,6 +50,14 @@ public class TestResult {
     @Column(name = "asterisk_call_id", length = 100)
     private String asteriskCallId;
 
+    /**
+     * Caminho absoluto do WAV gravado pelo MixMonitor durante o teste (Audio QoS, V93).
+     * NULL quando a chamada não foi atendida ou a gravação está desabilitada — nesse caso
+     * o motor acústico cai na estimativa sintética.
+     */
+    @Column(name = "recording_path", length = 500)
+    private String recordingPath;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

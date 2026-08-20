@@ -73,10 +73,19 @@ async def execute_node(node: Dict[str, Any], context: Dict[str, Any]) -> Dict[st
         elif sub_type == "audio_qos":
             phone = _interpolate(data.get("phone", "08007771234"), context)
             operadora = data.get("operadora", "Claro Telecom")
-            from audio_qos import generate_synthetic_qos
-            qos = generate_synthetic_qos(phone, "SUCESSO", operadora)
+            # Mede a gravação real do teste de conectividade mais recente do número
+            # (V93); sem gravação disponível, cai na estimativa sintética — o nó sempre
+            # informa qual dos dois foi usado em data_source.
+            from routers.audio_qos import _latest_recording_for_phone, _measure
+
+            async with DB() as conn:
+                recording = await _latest_recording_for_phone(conn, phone)
+            qos, source = _measure(recording, phone, "SUCESSO", operadora)
             out.update(qos)
-            out["message"] = f"Análise Acústica Concluída: MOS {qos['mos_score']} ({qos['quality_status']}) - {qos['ai_diagnosis']}"
+            out["data_source"] = source
+            out["recording_path"] = recording
+            origem = "medição real" if source == "real" else "estimativa (sem gravação)"
+            out["message"] = f"Análise Acústica Concluída [{origem}]: MOS {qos['mos_score']} ({qos['quality_status']}) - {qos['ai_diagnosis']}"
             return out
 
     # 3. COGNIÇÃO & IA (Cognitive)

@@ -9,7 +9,9 @@ Plataforma corporativa de **Agentes Autônomos de Inteligência Artificial + Mon
 | Módulo | Descrição |
 |--------|-----------|
 | 🤖 **Plataforma Nativa de Agentes IA** | Orquestração nativa de agentes autônomos de IA (SSH, Web, Logs, DB, RAG via pgvector, Secrets Vault e Multi-Model LLM: Gemini, OpenAI, Claude, Groq, Ollama). |
-| 📞 **Conectividade Telecom** | Testes programados e periódicos de conectividade de números telefônicos (E1, SIP, DDR, 0800 e DID) com discagem ativa e telemetria. |
+| 🧩 **Agent Flow Canvas (DAG Swarm)** | Orquestrador visual de grafos direcionados acíclicos (*Low-Code Drag-and-Drop*) para automações multi-agente, remediação de incidentes e pipelines de auto-cura. |
+| 📊 **Audio QoS & MOS Preditivo** | IA Acústica baseada nas normas ITU-T P.800 e G.107 com cálculo automatizado de nota MOS (1.0 a 5.0), Jitter (ms), Ruído de Fundo (dBFS), Perda de Pacotes, Waveform visual e laudo técnico. |
+| 📞 **Conectividade Telecom** | Testes programados e periódicos de conectividade de números telefônicos (E1, SIP, DDR, 0800 e DID) com discagem ativa, player de espectrograma e telemetria. |
 | 🚨 **Monitoramento & Alertas (Zabbix)** | Captura de alarmes críticos de infraestrutura via Zabbix API → disparo de ligação telefônica automatizada + notificação Telegram. |
 | ⚙️ **Sistema & Governança (Zero Downtime)** | Arquitetura de Duas Camadas com *Dual-Write* no banco de dados (`system_config`) e `.env`, permitindo alterações de integração com efeito em tempo de execução imediato sem reinício de containers. |
 | 👥 **RBAC, Governança & Cadastros** | Gestão de usuários, grupos de acesso granulares (RBAC por recurso), sincronização Active Directory (LDAPS), 2FA/TOTP, Trilha de Auditoria, Operadoras e Linhas. |

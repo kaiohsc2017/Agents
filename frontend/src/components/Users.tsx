@@ -6,12 +6,14 @@ import { EMPTY_CREATE, maxAccessDate } from './userModalTypes'
 import { CreateUserModal } from './CreateUserModal'
 import { EditUserModal } from './EditUserModal'
 import { TotpModal } from './TotpModal'
+import AdSyncTab from './AdSyncTab'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Users as UsersIcon, ShieldCheck, Plus, Search, Eye, EyeOff, KeyRound } from 'lucide-react'
+import { Users as UsersIcon, ShieldCheck, Plus, Search, Eye, EyeOff, KeyRound, Building2 } from 'lucide-react'
 
 export default function Users() {
+  const [activeTab, setActiveTab] = useState<'local' | 'ad'>('local')
   const [users, setUsers] = useState<AppUser[]>([])
   const [businessUnits, setBusinessUnits] = useState<BusinessUnitOption[]>([])
   const [accessGroups, setAccessGroups] = useState<AccessGroup[]>([])
@@ -291,20 +293,54 @@ export default function Users() {
             Controle de acessos, ramais SIP WebRTC vinculados e políticas de segurança
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setCreateForm(EMPTY_CREATE)
-            setShowCreate(true)
-          }}
-          className="font-semibold shadow-xs"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Novo Usuário
-        </Button>
+        {activeTab === 'local' && (
+          <Button
+            onClick={() => {
+              setCreateForm(EMPTY_CREATE)
+              setShowCreate(true)
+            }}
+            className="font-semibold shadow-xs"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Novo Usuário
+          </Button>
+        )}
       </div>
 
-      {/* ── Quick Stats Grid ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* ── Navigation Tabs ── */}
+      <div className="flex items-center gap-2 border-b border-border/70 pb-px">
+        <button
+          type="button"
+          onClick={() => setActiveTab('local')}
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'local'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <UsersIcon className="h-4 w-4" />
+          Usuários Locais & WebRTC
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('ad')}
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'ad'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          Sincronização Active Directory (LDAP)
+        </button>
+      </div>
+
+      {activeTab === 'ad' ? (
+        <AdSyncTab />
+      ) : (
+        <>
+          {/* ── Quick Stats Grid ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="shadow-xs border-border/70">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-1">
@@ -510,6 +546,8 @@ export default function Users() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Modals */}
       {showCreate && (

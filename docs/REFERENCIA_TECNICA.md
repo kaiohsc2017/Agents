@@ -73,24 +73,25 @@ A tabela abaixo documenta a correlação exata entre o menu da interface, a chav
 | **Agentes → Alertas** | `agents.reports` | `r` (Visualizar Alertas) | `routers/reports.py` | `alerts`, `executions` |
 | **Agentes → Secrets Vault** | `agents.secrets` | `r` (Listar chaves), `rw` (Salvar) | `routers/system.py` | `agent_secrets` |
 | **Agentes → Config. IA** | `agents.llm` | `r` (Ver), `rw` (Alterar) | `routers/llm_config.py` | `system_config` |
+| **Agentes → Flow Canvas (DAG)** | `agents.flows` | `r` (Listar), `rw` (Criar/Executar) | `routers/flows.py`, `flow_engine.py` | `agent_flows`, `flow_executions`, `flow_execution_steps` |
 
 ---
 
 ## 4. Estrutura e Mecânica do Banco de Dados
 
-### 4.1. Migrações Flyway (Core Telecom)
+### 4.1. Migrações Flyway (Core Telecom & Governança)
 As migrações SQL residem em `backend/src/main/resources/db/migration/`:
-- `V1__init.sql`: Estrutura básica de usuários, papéis e tabelas operacionais.
-- `V2__connectivity.sql` a `V14__audit_enhancements.sql`: Tabelas de resultados de testes, gravações de chamadas e histórico de configurações.
-- `V15__access_groups_rbac.sql`: Implementação das tabelas de Grupos de Acesso e matriz de Resource Keys.
-- `V26__business_units_multitenancy.sql`: Isolamento de dados por Business Unit e flags de acesso indeterminado retroativo.
+- `V1__init.sql` a `V14__agents_schema.sql`: Estrutura básica de usuários, papéis, testes e agentes.
+- `V15__call_record_filters.sql` a `V26__user_business_units_access_control.sql`: RBAC granular, multitenancy por BU e auditoria.
+- `V27` a `V90`: Configurações em runtime, sincronização Active Directory / LDAP e parâmetros de IA.
+- `V91__create_agent_flows_tables.sql`: Tabelas do motor DAG `agent_flows`, `flow_executions` e `flow_execution_steps`.
 
-### 4.2. Schema da Plataforma de Agentes
-Gerenciado pelo script assíncrono `agents-platform/backend/migrate.py`:
-- `agents`: Cadastro de robôs de automação (tipo: `ssh`, `database`, `web`, `log`), parâmetros e cron jobs.
-- `agent_executions`: Histórico de execuções com status (`RUNNING`, `SUCCESS`, `FAILED`, `TIMEOUT`), tempo de execução e saída.
-- `knowledge_docs` & `knowledge_chunks`: Documentos particionados com vetores de embedding para busca semântica RAG.
-- `secrets`: Armazenamento cifrado de senhas de banco, credenciais SSH e tokens de webhook.
+### 4.2. Schema da Plataforma de Agentes & Motor DAG
+- `agents` & `agent_executions`: Cadastro e histórico de robôs de automação (SSH, SQL, HTTP, Logs).
+- `agent_flows`: Definição de grafos direcionados acíclicos (DAG) em JSONB com nós visuais e conexões.
+- `flow_executions` & `flow_execution_steps`: Telemetria de execução nó a nó com duração em ms, status e payload context.
+- `knowledge_docs` & `agent_memory`: Documentos particionados com vetores de embedding para busca semântica RAG.
+- `agent_secrets`: Armazenamento cifrado de senhas de banco, credenciais SSH e tokens de webhook.
 
 ### 4.3. Arquitetura de Configurações em Duas Camadas (Two-Tier Zero Downtime)
 - **Camada de Bootstrap / Infraestrutura (`env/.env`):** Segredos do Docker, banco de dados e bind de rede (`POSTGRES_*`, `SIP_PUBLIC_IP`, `BACKEND_JWT_SECRET`).

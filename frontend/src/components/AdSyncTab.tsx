@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import api from '../api/client'
+import { useAuthSession } from '../hooks/useAuthSession'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,6 +58,9 @@ interface AdUserLookup {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export function AdSyncTab() {
+  const { hasWrite: sessionHasWrite } = useAuthSession()
+  const hasWrite = sessionHasWrite('telecom.users')
+
   const [status, setStatus] = useState<SyncStatus | null>(null)
   const [statusLoading, setStatusLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -235,16 +239,18 @@ export function AdSyncTab() {
             )}
           </div>
 
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleSyncNow}
-            disabled={syncing}
-            className="text-xs h-8 font-semibold shrink-0"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Sincronizando...' : 'Sincronizar Agora'}
-          </Button>
+          {hasWrite && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleSyncNow}
+              disabled={syncing}
+              className="text-xs h-8 font-semibold shrink-0"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Sincronizando...' : 'Sincronizar Agora'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -332,15 +338,17 @@ export function AdSyncTab() {
               Use o DN completo do grupo (ex: <code className="font-mono bg-muted px-1 py-0.5 rounded text-[11px]">CN=Suporte,OU=Grupos,DC=empresa,DC=local</code>).
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={openModal}
-            className="text-xs h-8 shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            Novo Mapeamento
-          </Button>
+          {hasWrite && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openModal}
+              className="text-xs h-8 shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Novo Mapeamento
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           {mappingsLoading ? (
@@ -355,13 +363,13 @@ export function AdSyncTab() {
                   <tr className="border-b border-border/70 bg-muted/30 text-muted-foreground text-left">
                     <th className="px-4 py-2.5 font-medium">Grupo Active Directory (DN)</th>
                     <th className="px-4 py-2.5 font-medium">Grupo de Acesso (RBAC)</th>
-                    <th className="px-4 py-2.5 w-16 text-right font-medium">Ações</th>
+                    {hasWrite && <th className="px-4 py-2.5 w-16 text-right font-medium">Ações</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
                   {mappings.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground text-xs">
+                      <td colSpan={hasWrite ? 3 : 2} className="px-4 py-6 text-center text-muted-foreground text-xs">
                         Nenhum mapeamento cadastrado — novos usuários AD recebem o grupo padrão configurado.
                       </td>
                     </tr>
@@ -374,17 +382,19 @@ export function AdSyncTab() {
                             {m.accessGroupName}
                           </Badge>
                         </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteMapping(m)}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-                            title="Remover"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
+                        {hasWrite && (
+                          <td className="px-4 py-2.5 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteMapping(m)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                              title="Remover"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -463,7 +473,7 @@ export function AdSyncTab() {
                 variant="default"
                 size="sm"
                 onClick={handleCreateMapping}
-                disabled={modalSaving}
+                disabled={modalSaving || !hasWrite}
                 className="text-xs h-8 font-semibold"
               >
                 {modalSaving ? (

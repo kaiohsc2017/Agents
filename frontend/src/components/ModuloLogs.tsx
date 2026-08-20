@@ -159,7 +159,7 @@ export default function ModuloLogs() {
       setDockerLive(false)
     } else {
       const svcs = Array.from(dockerSvcs).join(',') || 'backend'
-      const token = localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token') || ''
+      const token = localStorage.getItem('agentia_token') || ''
       const url = `${api.defaults.baseURL}/logs/docker/stream?services=${svcs}&token=${encodeURIComponent(token)}`
       const sse = new EventSource(url)
       sse.onmessage = (e) => {
@@ -185,7 +185,7 @@ export default function ModuloLogs() {
       sseRef.current = null
       setAstLive(false)
     } else {
-      const token = localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token') || ''
+      const token = localStorage.getItem('agentia_token') || ''
       const url = `${api.defaults.baseURL}/logs/asterisk/stream?token=${encodeURIComponent(token)}`
       const sse = new EventSource(url)
       sse.onmessage = (e) => {

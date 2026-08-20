@@ -34,8 +34,6 @@ export default function Login({ onLogin }: LoginProps) {
 
   const finishLogin = (token: string, firstLoginCompleted?: boolean) => {
     const cleanUser = form.username.trim()
-    localStorage.setItem('voipia_token', token)
-    localStorage.setItem('voipia_user', cleanUser)
     localStorage.setItem('agentia_token', token)
     localStorage.setItem('agentia_user', cleanUser)
     if (!firstLoginCompleted) {
@@ -114,7 +112,7 @@ export default function Login({ onLogin }: LoginProps) {
     } catch {
       // Ignora erro
     }
-    const token = localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token') || ''
+    const token = localStorage.getItem('agentia_token') || ''
     onLogin(token, form.username.trim())
   }
 
@@ -138,7 +136,7 @@ export default function Login({ onLogin }: LoginProps) {
     try {
       await api.post('/auth/totp/confirm', { code: mfaCode.replace(/\s/g, '') })
       await api.post('/auth/first-login-completed', {})
-      const token = localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token') || ''
+      const token = localStorage.getItem('agentia_token') || ''
       onLogin(token, form.username.trim())
     } catch (err) {
       setMfaMsg(getErrorMessage(err, 'Código inválido. Tente novamente.'))

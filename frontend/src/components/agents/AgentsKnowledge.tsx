@@ -20,10 +20,22 @@ export default function AgentsKnowledge({ canWrite = true }: { canWrite?: boolea
   const [uploading, setUploading] = useState(false);
   const [flashMsg, setFlashMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const flashMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Limpa o timer da mensagem flash ao desmontar, evitando setState em componente já desmontado.
+  useEffect(() => {
+    return () => {
+      if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    };
+  }, []);
 
   const notify = (text: string, type: 'success' | 'error' = 'success') => {
     setFlashMsg({ type, text });
-    setTimeout(() => setFlashMsg(null), 4000);
+    if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    flashMsgTimerRef.current = setTimeout(() => {
+      flashMsgTimerRef.current = null;
+      setFlashMsg(null);
+    }, 4000);
   };
 
   const load = () => {

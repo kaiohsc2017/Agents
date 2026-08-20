@@ -10,7 +10,7 @@ router = APIRouter()
 # de asyncpg/asyncssh — esse endpoint não passa pelo _mask_secrets de agents.py.
 _ADMIN = [Depends(require_admin)]
 
-@router.get("/")
+@router.get("/", dependencies=_ADMIN)
 async def list_executions(agent_id: str = None,
                            limit: int = Query(default=50, le=500), offset: int = 0):
     async with DB() as db:
@@ -31,7 +31,7 @@ async def list_executions(agent_id: str = None,
             total = await db.fetchval("SELECT COUNT(*) FROM executions")
         return {"items": [dict(r) for r in rows], "total": total, "limit": limit, "offset": offset}
 
-@router.get("/dashboard/summary")
+@router.get("/dashboard/summary", dependencies=_ADMIN)
 async def dashboard_summary():
     """Cards do topo: agentes ativos, execuções OK/erro últimas 24h, alertas 24h."""
     async with DB() as db:
@@ -64,7 +64,7 @@ async def dashboard_summary():
             "recent_executions": [dict(r) for r in recent],
         }
 
-@router.get("/dashboard/period")
+@router.get("/dashboard/period", dependencies=_ADMIN)
 async def dashboard_period(period: str = "day"):
     """Tabela 'Por período': totais por agente em 24h / 7d / 30d."""
     if period not in {"day", "week", "month"}:
@@ -90,7 +90,7 @@ async def dashboard_period(period: str = "day"):
         """, period)
         return [dict(r) for r in rows]
 
-@router.get("/alerts")
+@router.get("/alerts", dependencies=_ADMIN)
 async def list_alerts(limit: int = Query(default=100, le=500)):
     """Histórico de alertas para a página Alertas/Relatórios."""
     rows = await fetch_recent_alerts(limit)

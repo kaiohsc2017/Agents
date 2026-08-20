@@ -19,6 +19,7 @@ import asyncssh
 from database import DB
 from executors import EXECUTORS, _build_ssh_kwargs
 from executors.common import memory_save
+from secrets_crypto import decrypt_secret
 
 logger = logging.getLogger("asteriskia.executor")
 
@@ -74,11 +75,19 @@ async def _send_all_alerts(agent: dict, level: str, message: str,
         })
         await _save("webhook", ok)
 
-    await broadcast("__alerts__", {
+    # Achado B4 da auditoria: "web" era sempre marcado como delivered=True, sem
+    # confirmar se havia algum WebSocket de fato conectado no canal
+    # "__alerts__" no momento do broadcast. `broadcast()` (main.py) agora
+    # devolve quantos clientes receberam a mensagem — usamos isso para marcar
+    # a entrega real. Nota: isso confirma que havia cliente conectado e que o
+    # envio via `ws.send_json` não lançou exceção — não é uma confirmação de
+    # entrega ponta a ponta (o cliente pode falhar em processar a mensagem
+    # depois de recebida), mas já é uma medição real, não mais um valor fixo.
+    recipient_count = await broadcast("__alerts__", {
         "ts": datetime.now(timezone.utc).isoformat(),
         "agent": agent["name"], "level": level, "message": message
     })
-    await _save("web", True)
+    await _save("web", recipient_count > 0)
 
 
 async def _apply_retention():
@@ -142,6 +151,81 @@ def _calc_next_run(agent: dict):
     return None
 
 
+async def _run_autofix(db, agent: dict, agent_id: UUID, execution_id: UUID,
+                        servers: list, result: dict) -> None:
+    """Roda fix_cmd só no(s) servidor(es) onde ESSE check especificamente falhou
+    (via result["report"]["servers"]), não sempre em servers[0] — extraído de
+    run_agent (achado B5 da auditoria, refatoração pura sem mudança de
+    comportamento)."""
+    rules = agent.get("rules") or {}
+    if isinstance(rules, str):
+        rules = json.loads(rules)
+    report_servers  = result["report"].get("servers", [])
+    servers_by_name = {s["name"]: s for s in servers}
+    for check in rules.get("checks", []):
+        fix_cmd = check.get("fix_cmd", "")
+        if not (fix_cmd and check.get("auto_fix", False)):
+            continue
+        check_name = check.get("name", check.get("cmd", "check"))
+        failed_on = [
+            srv_rep["server"] for srv_rep in report_servers
+            if any(c.get("name") == check_name and not c.get("ok")
+                   for c in srv_rep.get("checks", []))
+        ]
+        targets = [servers_by_name[n] for n in failed_on if n in servers_by_name]
+        if not targets:
+            # Sem match no relatório (formato inesperado) — mantém o
+            # comportamento anterior como fallback, não trava o auto-fix.
+            targets = [servers[0]]
+        for srv in targets:
+            try:
+                async with await asyncssh.connect(**_build_ssh_kwargs(srv)) as conn:
+                    r = await asyncio.wait_for(conn.run(fix_cmd), timeout=30)
+                    await db.execute("""
+                        INSERT INTO execution_logs
+                          (execution_id,agent_id,level,server,message,raw_output)
+                        VALUES ($1,$2,'warning',$3,$4,$5)
+                    """, execution_id, agent_id, srv["name"],
+                         f"🔧 Auto-fix: {fix_cmd}", r.stdout[:500])
+            except Exception as e:
+                await db.execute("""
+                    INSERT INTO execution_logs
+                      (execution_id,agent_id,level,server,message)
+                    VALUES ($1,$2,'error',$3,$4)
+                """, execution_id, agent_id, srv.get("name", ""),
+                     f"🔧 Auto-fix falhou: {e}")
+
+
+async def _maybe_chain(agent: dict, status: str, _chain_depth: int, broadcast) -> None:
+    """Encadeamento de agentes (máx. 3 níveis) — extraído de run_agent (achado
+    B5 da auditoria, refatoração pura sem mudança de comportamento)."""
+    trigger_id = agent.get("on_failure_trigger_agent_id")
+    if trigger_id and status in ("error", "partial") and _chain_depth < 3:
+        try:
+            async with DB() as db:
+                trow = await db.fetchrow(
+                    "SELECT * FROM agents WHERE id=$1", UUID(str(trigger_id)))
+            if trow:
+                logger.info("[chain] %s → %s", agent["name"], trow["name"])
+                _spawn_background_task(run_agent(dict(trow), broadcast, _chain_depth + 1))
+        except Exception as e:
+            logger.error("[chain] Erro: %s", e)
+
+
+def _calc_status(no_targets: bool, result: dict) -> str:
+    """Calcula o status final da execução — extraído de run_agent (achado B5
+    da auditoria, refatoração pura sem mudança de comportamento)."""
+    if no_targets:
+        return "error"
+    if result["total"] == 0 and result["failed"] == 0:
+        return "error"
+    if result["failed"] == 0:
+        return "success"
+    if result["passed"] > 0:
+        return "partial"
+    return "error"
+
+
 async def run_agent(agent: dict, broadcast, _chain_depth: int = 0) -> dict:
     """Ponto de entrada principal — cria execução, roda o executor, salva resultados."""
     agent_id_str = str(agent["id"])
@@ -166,7 +250,10 @@ async def run_agent(agent: dict, broadcast, _chain_depth: int = 0) -> dict:
 
             secret_rows = await db.fetch(
                 "SELECT key, value FROM agent_secrets WHERE agent_id=$1", agent_id)
-            agent["_secrets"] = {r["key"]: r["value"] for r in secret_rows}
+            # Achado M4 da auditoria: decifra no momento de uso pelo executor
+            # (value é gravado cifrado por upsert_secret em routers/system.py,
+            # quando AGENT_SECRETS_ENCRYPTION_KEY está configurada).
+            agent["_secrets"] = {r["key"]: decrypt_secret(r["value"]) for r in secret_rows}
 
             await db.execute("""
                 INSERT INTO executions (id,agent_id,session_id,status)
@@ -199,16 +286,7 @@ async def run_agent(agent: dict, broadcast, _chain_depth: int = 0) -> dict:
             _rules_for_targets = json.loads(_rules_for_targets)
         no_targets = (len(servers) == 0 and not agent.get("target_urls")
                       and not _rules_for_targets.get("checks"))
-        if no_targets:
-            status = "error"
-        elif result["total"] == 0 and result["failed"] == 0:
-            status = "error"
-        elif result["failed"] == 0:
-            status = "success"
-        elif result["passed"] > 0:
-            status = "partial"
-        else:
-            status = "error"
+        status = _calc_status(no_targets, result)
 
         summary = ("Nenhum alvo configurado para este agente" if no_targets else
                    f"{result['passed']}/{result['total']} verificações OK"
@@ -241,59 +319,14 @@ async def run_agent(agent: dict, broadcast, _chain_depth: int = 0) -> dict:
             # com múltiplos servidores, o comando de correção do host errado não
             # deveria ser disparado (achado da auditoria, executor.py O1.5).
             if status in ("error", "partial") and servers:
-                rules = agent.get("rules") or {}
-                if isinstance(rules, str): rules = json.loads(rules)
-                report_servers  = result["report"].get("servers", [])
-                servers_by_name = {s["name"]: s for s in servers}
-                for check in rules.get("checks", []):
-                    fix_cmd = check.get("fix_cmd", "")
-                    if not (fix_cmd and check.get("auto_fix", False)):
-                        continue
-                    check_name = check.get("name", check.get("cmd", "check"))
-                    failed_on = [
-                        srv_rep["server"] for srv_rep in report_servers
-                        if any(c.get("name") == check_name and not c.get("ok")
-                               for c in srv_rep.get("checks", []))
-                    ]
-                    targets = [servers_by_name[n] for n in failed_on if n in servers_by_name]
-                    if not targets:
-                        # Sem match no relatório (formato inesperado) — mantém o
-                        # comportamento anterior como fallback, não trava o auto-fix.
-                        targets = [servers[0]]
-                    for srv in targets:
-                        try:
-                            async with await asyncssh.connect(**_build_ssh_kwargs(srv)) as conn:
-                                r = await asyncio.wait_for(conn.run(fix_cmd), timeout=30)
-                                await db.execute("""
-                                    INSERT INTO execution_logs
-                                      (execution_id,agent_id,level,server,message,raw_output)
-                                    VALUES ($1,$2,'warning',$3,$4,$5)
-                                """, execution_id, agent_id, srv["name"],
-                                     f"🔧 Auto-fix: {fix_cmd}", r.stdout[:500])
-                        except Exception as e:
-                            await db.execute("""
-                                INSERT INTO execution_logs
-                                  (execution_id,agent_id,level,server,message)
-                                VALUES ($1,$2,'error',$3,$4)
-                            """, execution_id, agent_id, srv.get("name",""),
-                                 f"🔧 Auto-fix falhou: {e}")
+                await _run_autofix(db, agent, agent_id, execution_id, servers, result)
 
         if result["failed"] > 0:
             await memory_save(agent_id, "observation",
                 f"Falhas em {session_id}", summary, tags=["failure", agent["type"]])
 
         # ── Encadeamento de agentes (máx. 3 níveis) ───────────────────────────
-        trigger_id = agent.get("on_failure_trigger_agent_id")
-        if trigger_id and status in ("error", "partial") and _chain_depth < 3:
-            try:
-                async with DB() as db:
-                    trow = await db.fetchrow(
-                        "SELECT * FROM agents WHERE id=$1", UUID(str(trigger_id)))
-                if trow:
-                    logger.info("[chain] %s → %s", agent["name"], trow["name"])
-                    _spawn_background_task(run_agent(dict(trow), broadcast, _chain_depth + 1))
-            except Exception as e:
-                logger.error("[chain] Erro: %s", e)
+        await _maybe_chain(agent, status, _chain_depth, broadcast)
 
         await broadcast(str(agent_id), {
             "ts": finished.isoformat(), "level": "info",

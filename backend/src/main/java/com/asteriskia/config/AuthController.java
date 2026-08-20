@@ -92,8 +92,12 @@ public class AuthController {
                         || ENCODER.matches(trimmedPassword, user.getPasswordHash())
                         || ENCODER.matches(rawPassword, user.getPasswordHash());
 
-                log.info("Auth attempt: user='{}', db_user='{}', pwd_len={}, matches={}",
-                        username, user.getUsername(), normalizedPassword.length(), matches);
+                // M1 (auditoria 2026-08-20): removido "pwd_len" deste log — comprimento de
+                // senha em nível INFO (sempre ativo em produção) é informação sensível que
+                // ajuda um atacante a enumerar/adivinhar credenciais; não agrega valor de
+                // auditoria que "matches" já não forneça.
+                log.info("Auth attempt: user='{}', db_user='{}', matches={}",
+                        username, user.getUsername(), matches);
 
                 if (matches) {
                     if (user.hasExpiredAccess()) {

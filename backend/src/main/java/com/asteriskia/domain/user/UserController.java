@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,6 +32,7 @@ public class UserController {
     private final AppUserRepository userRepo;
     private final AuditService auditService;
     private final UserService userService;
+    private final SipSecretCipher sipSecretCipher;
     private static final BCryptPasswordEncoder ENCODER = new BCryptPasswordEncoder(10);
 
     /**
@@ -53,9 +57,18 @@ public class UserController {
     // CRUD
     // -----------------------------------------------------------------------
 
+    /**
+     * M14 (auditoria 2026-08-20): antes usava {@code findAll()} sem paginação — cresce sem limite
+     * com a base de usuários. Adicionado suporte a {@link Pageable}/{@link Page}, mesmo padrão já
+     * usado em {@code ConnectivityController#listResults}, mas com compatibilidade retroativa: sem
+     * parâmetros de página o {@code size} default (1000) devolve tudo numa página só, porque o
+     * {@code Users.tsx} do frontend ainda não foi atualizado para consumir paginação de verdade
+     * (fica para uma próxima sessão, fora do escopo desta correção).
+     */
     @GetMapping
-    public ResponseEntity<List<UserResponse>> listUsers() {
-        return ResponseEntity.ok(userRepo.findAll().stream().map(UserResponse::from).toList());
+    public ResponseEntity<Page<UserResponse>> listUsers(
+            @PageableDefault(size = 1000, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(userRepo.findAll(pageable).map(UserResponse::from));
     }
 
     @GetMapping("/{id}")
@@ -71,11 +84,50 @@ public class UserController {
      * do componente desde o carregamento da lista). Endpoint dedicado: só busca sob demanda, ao
      * clicar "revelar" em um usuário específico.
      */
+    /**
+     * Achado de segurança H1 (auditoria): antes, a "senha" do ramal era calculada por fórmula
+     * previsível ("webrtc" + extensão + "pass") — qualquer pessoa que soubesse o número do
+     * ramal deduzia a credencial sem nenhum acesso ao sistema. Agora devolve um secret aleatório
+     * forte ({@link java.security.SecureRandom}, 24 bytes → 32 chars em Base64 URL-safe),
+     * gerado na primeira consulta e persistido em {@code app_users.sip_secret} (migration V95).
+     *
+     * <p><b>Limitação conhecida, documentada deliberadamente</b>: este backend Java não tem
+     * PJSIP realtime (ARA) configurado — diferente do projeto de referência (VoipIA), onde o
+     * secret gerado seria escrito de volta no {@code pjsip.conf}/tabela ARA e o Asterisk
+     * autenticaria o ramal com o valor real. Aqui, a autenticação SIP real dos ramais estáticos
+     * (9001/9002/1001/1002) continua vindo das variáveis de ambiente
+     * {@code RAMAL_XXXX_PASSWORD} injetadas via {@code envsubst} no boot do Asterisk — este
+     * secret aleatório NÃO é sincronizado automaticamente com o {@code pjsip.conf}. O objetivo
+     * desta correção é eliminar a fórmula previsível (o valor deixa de ser adivinhável), não
+     * reconstruir toda a cadeia de autenticação SIP. Se este valor precisar futuramente
+     * autenticar de fato um ramal real no Asterisk, a sincronização com o {@code pjsip.conf}
+     * (ou uma migração para PJSIP realtime/ARA) é um passo manual/futuro ainda não implementado.
+     *
+     * <p><b>Achado A9 (auditoria 2026-08-20)</b>: o valor persistido em {@code sip_secret} agora
+     * é cifrado em repouso (AES-256-GCM, ver {@link SipSecretCipher}) antes de salvar, e
+     * decifrado aqui antes de devolver na resposta. Ver o javadoc de {@link SipSecretCipher}
+     * para o comportamento de fail-open (sem {@code SIP_SECRET_ENCRYPTION_KEY} configurada) e a
+     * compatibilidade retroativa com valores já gravados em texto plano.
+     */
     @GetMapping("/{id}/extension-password")
     public ResponseEntity<?> getExtensionPassword(@PathVariable Integer id) {
         return userRepo.findById(id)
-                .map(u -> ResponseEntity.ok(new ExtensionPasswordResponse(extensionPasswordFor(u))))
+                .map(
+                        u -> {
+                            if (u.getSipSecret() == null || u.getSipSecret().isBlank()) {
+                                u.setSipSecret(sipSecretCipher.encrypt(generateSipSecret()));
+                                userRepo.save(u);
+                            }
+                            String plainSecret = sipSecretCipher.decrypt(u.getSipSecret());
+                            return ResponseEntity.ok(new ExtensionPasswordResponse(plainSecret));
+                        })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    private String generateSipSecret() {
+        byte[] bytes = new byte[24];
+        new java.security.SecureRandom().nextBytes(bytes);
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     @PostMapping
@@ -271,7 +323,4 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    private String extensionPasswordFor(AppUser u) {
-        return "webrtc" + u.getExtension() + "pass";
-    }
 }

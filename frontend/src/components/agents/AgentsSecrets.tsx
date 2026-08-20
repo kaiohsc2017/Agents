@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, RefreshCw, Bot, Clock, Info } from 'lucide-react';
 import agentsApi, { getErrorMessage } from './agentsClient';
 import type { Agent, AgentSecret, PaginatedResponse } from './types';
@@ -23,11 +23,23 @@ export default function AgentsSecrets({ canWrite = true }: { canWrite?: boolean 
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ key: '', value: '' });
   const [flashMsg, setFlashMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const flashMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const notify = (text: string, type: 'success' | 'error' = 'success') => {
     setFlashMsg({ type, text });
-    setTimeout(() => setFlashMsg(null), 4000);
+    if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    flashMsgTimerRef.current = setTimeout(() => {
+      flashMsgTimerRef.current = null;
+      setFlashMsg(null);
+    }, 4000);
   };
+
+  // Limpa o timer da mensagem flash ao desmontar, evitando setState em componente já desmontado.
+  useEffect(() => {
+    return () => {
+      if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     agentsApi

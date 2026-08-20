@@ -19,19 +19,25 @@ _SSH_KNOWN_HOSTS = os.environ.get("SSH_KNOWN_HOSTS_FILE", "")
 
 
 def _build_ssh_kwargs(server: dict) -> dict:
-    """Monta kwargs para asyncssh.connect() centralizando host key checking."""
+    """
+    Monta kwargs para asyncssh.connect() centralizando host key checking.
+
+    Falha fechado (achado B1): sem SSH_KNOWN_HOSTS_FILE configurado (ou apontando para um
+    arquivo inexistente), asyncssh trata known_hosts=None como "aceitar qualquer chave" —
+    isso deixa a conexão SSH vulnerável a MITM. Recusa a conexão em vez de degradar
+    silenciosamente para known_hosts=None.
+    """
+    if not _SSH_KNOWN_HOSTS or not os.path.isfile(_SSH_KNOWN_HOSTS):
+        raise RuntimeError(
+            "SSH_KNOWN_HOSTS_FILE não configurado — conexão SSH recusada por segurança"
+        )
     kwargs: dict = dict(
         host=server["host"],
         port=server["port"],
         username=server["username"],
-        known_hosts=_SSH_KNOWN_HOSTS or None,
+        known_hosts=_SSH_KNOWN_HOSTS,
         connect_timeout=15,
     )
-    if not _SSH_KNOWN_HOSTS:
-        logger.warning(
-            "SSH sem verificação de host key para %s — defina SSH_KNOWN_HOSTS_FILE no .env",
-            server["host"],
-        )
     if server.get("auth_type") == "key" and server.get("ssh_key"):
         kwargs["client_keys"] = [asyncssh.import_private_key(server["ssh_key"])]
     else:

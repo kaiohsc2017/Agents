@@ -103,7 +103,7 @@ public class AsteriskAclService {
             removePersistentLockdown();
             log.info("Lockdown disable DOCKER-USER enviado");
         } catch (Exception e) {
-            log.warn("removeLockdownIptables: {}", e.getMessage());
+            log.warn("removeLockdownIptables falhou", e);
         }
     }
 
@@ -118,7 +118,7 @@ public class AsteriskAclService {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING);
         } catch (Exception e) {
-            log.warn("writePersistentLockdown: {}", e.getMessage());
+            log.warn("writePersistentLockdown falhou", e);
         }
     }
 
@@ -126,7 +126,7 @@ public class AsteriskAclService {
         try {
             Files.deleteIfExists(Path.of(SECURITY_CMD_DIR, "lockdown-persistent.sh"));
         } catch (Exception e) {
-            log.warn("removePersistentLockdown: {}", e.getMessage());
+            log.warn("removePersistentLockdown falhou", e);
         }
     }
 
@@ -194,7 +194,7 @@ public class AsteriskAclService {
             List<String> cmd = List.of("asterisk", "-rx", "acl reload");
             new ProcessBuilder(cmd).start().waitFor(5, TimeUnit.SECONDS);
         } catch (Exception e) {
-            log.warn("reloadAsteriskAcl: {}", e.getMessage());
+            log.warn("reloadAsteriskAcl falhou", e);
         }
     }
 

@@ -15,13 +15,19 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from audio_qos import analyze_wav_file, generate_synthetic_qos
 from database import DB
+from auth import require_permission
 
 router = APIRouter()
+
+# Métricas de QoS acústico exigem PERM_READ/WRITE_telecom.qos (ou ADMIN legado) —
+# resource_key já existente no catálogo Java (ResourceCatalog.java).
+_READ  = [Depends(require_permission("telecom.qos", "read"))]
+_WRITE = [Depends(require_permission("telecom.qos", "write"))]
 
 # Diretório das gravações do Asterisk (volume agentia_asterisk_recordings, montado :ro).
 # Qualquer caminho fora daqui é recusado antes de abrir o arquivo — o motor acústico lê o
@@ -111,7 +117,7 @@ def _waveform(value: Any) -> List[int]:
     return value if isinstance(value, list) else json.loads(value or "[]")
 
 
-@router.get("/summary")
+@router.get("/summary", dependencies=_READ)
 async def get_qos_summary():
     """Retorna o resumo executivo de qualidade acústica e ranking de MOS por operadora."""
     async with DB() as conn:
@@ -202,7 +208,7 @@ async def get_qos_summary():
         }
 
 
-@router.get("/test/{test_result_id}")
+@router.get("/test/{test_result_id}", dependencies=_READ)
 async def get_qos_by_test(test_result_id: int):
     """
     Retorna métricas de QoS e waveform para um resultado de teste específico.
@@ -319,7 +325,7 @@ async def get_qos_by_test(test_result_id: int):
         }
 
 
-@router.post("/analyze", status_code=status.HTTP_201_CREATED)
+@router.post("/analyze", status_code=status.HTTP_201_CREATED, dependencies=_WRITE)
 async def analyze_audio_endpoint(req: AudioQosAnalyzeRequest):
     """
     Executa a análise acústica e salva o laudo de QoS.

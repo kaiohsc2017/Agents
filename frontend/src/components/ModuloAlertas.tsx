@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api, { getErrorMessage } from '../api/client'
+import { useAuthSession } from '../hooks/useAuthSession'
 import type { AlertCall, AlertContact, Operation, PageResponse } from '../api/types'
 import { AuthedAudio } from './AuthedAudio'
 import { Card, CardContent } from '@/components/ui/card'
@@ -117,6 +118,9 @@ function TelegramMessageModal({ message, onClose }: { message: string; onClose: 
 }
 
 export default function ModuloAlertas() {
+  const { hasWrite: sessionHasWrite } = useAuthSession()
+  const hasWrite = sessionHasWrite('telecom.modulo3')
+
   const [tab, setTab] = useState<'alerts' | 'contacts'>('alerts')
   const [alerts, setAlerts] = useState<AlertCall[]>([])
   const [contacts, setContacts] = useState<AlertContact[]>([])
@@ -248,7 +252,7 @@ export default function ModuloAlertas() {
               Contatos de Plantão
             </button>
           </div>
-          {tab === 'contacts' && (
+          {tab === 'contacts' && hasWrite && (
             <Button onClick={openCreate} className="font-semibold shadow-xs">
               <Plus className="h-4 w-4 mr-1" />
               Novo Contato
@@ -490,13 +494,13 @@ export default function ModuloAlertas() {
                       <th className="py-3 px-4">Telefone</th>
                       <th className="py-3 px-4">Operação Vinculada</th>
                       <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Ações</th>
+                      {hasWrite && <th className="py-3 px-4 text-right">Ações</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
                     {contacts.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                        <td colSpan={hasWrite ? 6 : 5} className="py-10 text-center text-muted-foreground">
                           Nenhum contato cadastrado na escala.
                         </td>
                       </tr>
@@ -522,23 +526,25 @@ export default function ModuloAlertas() {
                                 {c.isActive ? 'Ativo' : 'Inativo'}
                               </Badge>
                             </td>
-                            <td className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  onClick={() => openEdit(c)}
-                                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                                >
-                                  Editar
-                                </button>
-                                <span className="text-border">·</span>
-                                <button
-                                  onClick={() => deleteContact(c.id)}
-                                  className="text-xs font-semibold text-destructive hover:underline cursor-pointer"
-                                >
-                                  Excluir
-                                </button>
-                              </div>
-                            </td>
+                            {hasWrite && (
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => openEdit(c)}
+                                    className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                                  >
+                                    Editar
+                                  </button>
+                                  <span className="text-border">·</span>
+                                  <button
+                                    onClick={() => deleteContact(c.id)}
+                                    className="text-xs font-semibold text-destructive hover:underline cursor-pointer"
+                                  >
+                                    Excluir
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ))
                     )}
@@ -645,9 +651,11 @@ export default function ModuloAlertas() {
               <Button variant="outline" onClick={() => setShowModal(false)}>
                 Cancelar
               </Button>
-              <Button onClick={saveContact} className="font-semibold">
-                {editContact.id ? 'Salvar Alterações' : 'Criar Contato'}
-              </Button>
+              {hasWrite && (
+                <Button onClick={saveContact} className="font-semibold">
+                  {editContact.id ? 'Salvar Alterações' : 'Criar Contato'}
+                </Button>
+              )}
             </div>
           </div>
         </div>

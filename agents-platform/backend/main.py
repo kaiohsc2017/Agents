@@ -20,7 +20,18 @@ scheduler = AgentScheduler()
 # ── JWT ──────────────────────────────────────────────────────────────────────
 # Replica exatamente a lógica de padding do JwtService.java:
 # key = secret.getBytes(); padded = new byte[max(32, key.length)]
-_JWT_RAW = os.getenv("BACKEND_JWT_SECRET", "changeme_dev_secret").encode()
+#
+# Achado A6 da auditoria: sem BACKEND_JWT_SECRET configurado (ou igual ao
+# literal de dev), o serviço subia silenciosamente com um segredo previsível
+# — falha fechada no boot em vez disso (mesmo padrão já usado em
+# executors/common.py para SSH_KNOWN_HOSTS_FILE).
+_JWT_SECRET_STR = os.getenv("BACKEND_JWT_SECRET", "")
+if not _JWT_SECRET_STR or _JWT_SECRET_STR == "changeme_dev_secret":
+    raise RuntimeError(
+        "BACKEND_JWT_SECRET não configurado — defina a variável de ambiente "
+        "antes de iniciar o serviço."
+    )
+_JWT_RAW = _JWT_SECRET_STR.encode()
 JWT_KEY  = _JWT_RAW.ljust(max(32, len(_JWT_RAW)), b"\x00")
 
 # Rotas acessíveis sem autenticação
@@ -40,12 +51,21 @@ def _is_public(path: str) -> bool:
 # WebSocket: canal por agent_id + canal global __alerts__
 ws_clients: dict[str, list[WebSocket]] = {}
 
-async def broadcast(channel: str, data: dict):
-    """Envia para todos os WebSocket inscritos no canal, removendo conexões mortas."""
+async def broadcast(channel: str, data: dict) -> int:
+    """Envia para todos os WebSocket inscritos no canal, removendo conexões mortas.
+
+    Retorna o número de clientes que efetivamente receberam a mensagem no
+    canal solicitado (nunca conta o repasse ao "__alerts__" quando o canal
+    original já é diferente — ver abaixo). Usado por orchestrator.py (achado
+    B4 da auditoria) para saber se havia pelo menos um destinatário conectado
+    em vez de assumir entrega sempre bem-sucedida.
+    """
+    delivered = 0
     dead: list = []
     for ws in ws_clients.get(channel, []):
         try:
             await ws.send_json(data)
+            delivered += 1
         except Exception:
             dead.append(ws)
     for ws in dead:
@@ -59,6 +79,7 @@ async def broadcast(channel: str, data: dict):
         for ws in ws_clients.get("__alerts__", []):
             try:
                 await ws.send_json(data)
+                delivered += 1
             except Exception:
                 dead.append(ws)
         for ws in dead:
@@ -66,6 +87,7 @@ async def broadcast(channel: str, data: dict):
                 ws_clients["__alerts__"].remove(ws)
             except (ValueError, KeyError):
                 pass
+    return delivered
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -111,7 +133,8 @@ async def jwt_middleware(request: Request, call_next):
         return JSONResponse({"detail": "Não autenticado"}, status_code=401)
     token = auth[7:]
     try:
-        payload = _jwt.decode(token, JWT_KEY, algorithms=["HS256"])
+        payload = _jwt.decode(token, JWT_KEY, algorithms=["HS256"],
+                               options={"require": ["exp"]})
         request.state.user = payload.get("sub", "")
         request.state.role = payload.get("role", "USER")
         request.state.perms = payload.get("perm", {})
@@ -144,7 +167,8 @@ def _ws_auth(token: str | None) -> bool:
     if not token:
         return False
     try:
-        payload = _jwt.decode(token, JWT_KEY, algorithms=["HS256"])
+        payload = _jwt.decode(token, JWT_KEY, algorithms=["HS256"],
+                               options={"require": ["exp"]})
         return payload.get("scope") == "stream" and not payload.get("totp_pending", False)
     except JWTError:
         return False

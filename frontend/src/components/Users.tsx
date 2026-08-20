@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api, { getErrorMessage } from '../api/client'
+import { useAuthSession } from '../hooks/useAuthSession'
 import type { AccessGroup } from '../api/types'
 import type { AppUser, BusinessUnitOption, CreateForm, EditForm, TotpSetup } from './userModalTypes'
 import { EMPTY_CREATE, maxAccessDate } from './userModalTypes'
@@ -13,6 +14,9 @@ import { Button } from '@/components/ui/button'
 import { Users as UsersIcon, ShieldCheck, Plus, Search, Eye, EyeOff, KeyRound, Building2 } from 'lucide-react'
 
 export default function Users() {
+  const { hasWrite: sessionHasWrite } = useAuthSession()
+  const hasWrite = sessionHasWrite('telecom.users')
+
   const [activeTab, setActiveTab] = useState<'local' | 'ad'>('local')
   const [users, setUsers] = useState<AppUser[]>([])
   const [businessUnits, setBusinessUnits] = useState<BusinessUnitOption[]>([])
@@ -39,6 +43,10 @@ export default function Users() {
   const handleToggleReveal = (userId: number) => {
     if (revealedPass === userId) {
       setRevealedPass(null)
+      setRevealedPasswords((prev) => {
+        const { [userId]: _removed, ...rest } = prev
+        return rest
+      })
       return
     }
     setRevealedPass(userId)
@@ -293,7 +301,7 @@ export default function Users() {
             Controle de acessos, ramais SIP WebRTC vinculados e políticas de segurança
           </p>
         </div>
-        {activeTab === 'local' && (
+        {activeTab === 'local' && hasWrite && (
           <Button
             onClick={() => {
               setCreateForm(EMPTY_CREATE)
@@ -426,13 +434,13 @@ export default function Users() {
                   <th className="py-3 px-4">Expiração</th>
                   <th className="py-3 px-4">2FA</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Ações</th>
+                  {hasWrite && <th className="py-3 px-4 text-right">Ações</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-10 text-center text-muted-foreground">
+                    <td colSpan={hasWrite ? 11 : 10} className="py-10 text-center text-muted-foreground">
                       Nenhum usuário encontrado.
                     </td>
                   </tr>
@@ -499,45 +507,47 @@ export default function Users() {
                           {u.isActive ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => openEdit(u)}
-                            className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                          >
-                            Editar
-                          </button>
-                          <span className="text-border">·</span>
-                          <button
-                            onClick={() => openTotp(u)}
-                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                          >
-                            2FA
-                          </button>
-                          {u.totpEnabled && (
-                            <>
-                              <span className="text-border">·</span>
-                              <button
-                                onClick={() => handleResetTotp(u)}
-                                className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
-                              >
-                                Reset
-                              </button>
-                            </>
-                          )}
-                          {u.isActive && (
-                            <>
-                              <span className="text-border">·</span>
-                              <button
-                                onClick={() => handleDeactivate(u)}
-                                className="text-xs font-semibold text-destructive hover:underline cursor-pointer"
-                              >
-                                Desativar
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
+                      {hasWrite && (
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => openEdit(u)}
+                              className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                            >
+                              Editar
+                            </button>
+                            <span className="text-border">·</span>
+                            <button
+                              onClick={() => openTotp(u)}
+                              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                            >
+                              2FA
+                            </button>
+                            {u.totpEnabled && (
+                              <>
+                                <span className="text-border">·</span>
+                                <button
+                                  onClick={() => handleResetTotp(u)}
+                                  className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                                >
+                                  Reset
+                                </button>
+                              </>
+                            )}
+                            {u.isActive && (
+                              <>
+                                <span className="text-border">·</span>
+                                <button
+                                  onClick={() => handleDeactivate(u)}
+                                  className="text-xs font-semibold text-destructive hover:underline cursor-pointer"
+                                >
+                                  Desativar
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import api, { getErrorMessage } from '../api/client'
 import agentsApi from './agents/agentsClient'
@@ -15,21 +15,12 @@ import type {
 import { HistoricoModal } from './HistoricoModal'
 import { DashboardKPIs } from './DashboardKPIs'
 import { TestModal } from './TestModal'
+import { ImportTestsModal } from './ImportTestsModal'
 import { AudioQosBadge, type AudioQosData } from './shared/AudioQosBadge'
 import { formatDate, nextExecution, getPeriodRange } from './connectivityHelpers'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  PhoneCall,
-  Plus,
-  Search,
-  Upload,
-  Download,
-  ChevronLeft,
-  ChevronRight,
-  FileSpreadsheet,
-  X,
-} from 'lucide-react'
+import { PhoneCall, Plus, Search, Upload, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const EMPTY_FORM: NumberTestCreate = {
   phoneNumber: '',
@@ -68,16 +59,8 @@ export default function ModuloConectividade() {
   const [histTest, setHistTest] = useState<NumberTest | null>(null)
   const [exporting, setExporting] = useState(false)
   const [showImport, setShowImport] = useState(false)
-  const [importFile, setImportFile] = useState<File | null>(null)
-  const [importing, setImporting] = useState(false)
-  const [importResult, setImportResult] = useState<{
-    importados: number
-    erros: number
-    detalhes: { linha: number; conteudo: string; erro: string }[]
-  } | null>(null)
   const [search, setSearch] = useState('')
   const [qosMap, setQosMap] = useState<Record<number, AudioQosData>>({})
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadTests = () => {
     setLoading(true)
@@ -147,7 +130,7 @@ export default function ModuloConectividade() {
             .then((q) => {
               if (q.data) setQosMap((prev: Record<number, AudioQosData>) => ({ ...prev, [res.id]: q.data }))
             })
-            .catch(() => {})
+            .catch((err) => console.error(`Erro ao carregar MOS/Audio QoS do teste ${res.id}:`, err))
         }
       })
       .catch((err) => console.error('Erro ao carregar resultados de conectividade:', err))
@@ -318,49 +301,6 @@ export default function ModuloConectividade() {
     }
   }
 
-  const downloadTemplate = () => {
-    const wb = XLSX.utils.book_new()
-    const templateData = [
-      {
-        telefone: '+5511999999999',
-        bu: bus[0]?.name ?? 'BU Exemplo',
-        cliente: clients[0]?.name ?? 'Cliente Exemplo',
-        operacao: operations[0]?.name ?? 'Operação Exemplo',
-        segmento: segments[0]?.name ?? 'Segmento Exemplo',
-        horario_inicio: '08:00',
-        intervalo_min: 60,
-        quantidade: 3,
-        ativo: 'sim',
-      },
-    ]
-    const ws = XLSX.utils.json_to_sheet(templateData)
-    XLSX.utils.book_append_sheet(wb, ws, 'Importação')
-    XLSX.writeFile(wb, 'modelo_importacao_conectividade.xlsx')
-  }
-
-  const handleImport = async () => {
-    if (!importFile) return
-    setImporting(true)
-    setImportResult(null)
-    const formData = new FormData()
-    formData.append('file', importFile)
-    try {
-      const res = await api.post<{
-        importados: number
-        erros: number
-        detalhes: { linha: number; conteudo: string; erro: string }[]
-      }>('/number-tests/import', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      setImportResult(res.data)
-      loadTests()
-    } catch (e) {
-      alert(getErrorMessage(e, 'Erro ao importar arquivo.'))
-    } finally {
-      setImporting(false)
-    }
-  }
-
   const filteredTests = tests.filter(
     (t) =>
       t.phoneNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -422,10 +362,7 @@ export default function ModuloConectividade() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setShowImport(true)
-                  setImportResult(null)
-                }}
+                onClick={() => setShowImport(true)}
                 className="font-semibold"
               >
                 <Upload className="h-3.5 w-3.5 mr-1" />
@@ -826,106 +763,14 @@ export default function ModuloConectividade() {
       {histTest && <HistoricoModal test={histTest} onClose={() => setHistTest(null)} />}
 
       {showImport && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowImport(false)
-              setImportResult(null)
-            }
-          }}
-        >
-          <div className="bg-card text-card-foreground border border-border/70 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="h-5 w-5 text-primary" />
-                <h2 className="text-base font-bold text-foreground">Importar Testes em Lote</h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowImport(false)
-                  setImportResult(null)
-                }}
-                className="p-1 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3.5">
-              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground space-y-1.5">
-                <div className="font-semibold text-foreground">Instruções de Importação:</div>
-                <ul className="list-disc pl-4 space-y-0.5">
-                  <li>Baixe a planilha modelo e preencha os dados de teste</li>
-                  <li>BU, Cliente, Operação e Segmento devem corresponder aos cadastros</li>
-                  <li>Horário no formato HH:mm (ex: 08:00)</li>
-                </ul>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Button variant="outline" size="sm" onClick={downloadTemplate} className="text-xs">
-                  <Download className="h-3.5 w-3.5 mr-1" />
-                  Baixar Modelo .xlsx
-                </Button>
-                {importFile && (
-                  <span className="text-xs font-mono font-medium text-primary truncate max-w-xs">
-                    {importFile.name}
-                  </span>
-                )}
-              </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  setImportFile(e.target.files?.[0] ?? null)
-                  setImportResult(null)
-                }}
-              />
-
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-border/80 hover:border-primary/60 rounded-xl p-6 text-center cursor-pointer transition-all bg-muted/10 hover:bg-muted/20"
-              >
-                <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                <p className="text-xs font-medium text-foreground">Clique para selecionar o arquivo da planilha</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Formatos suportados: .xlsx, .xls, .csv</p>
-              </div>
-
-              {importResult && (
-                <div
-                  className={`p-3.5 rounded-xl border text-xs ${
-                    importResult.erros === 0
-                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                      : 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'
-                  }`}
-                >
-                  <p className="font-semibold">
-                    Resultado: {importResult.importados} importados, {importResult.erros} erros.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/60">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowImport(false)
-                  setImportResult(null)
-                }}
-              >
-                Fechar
-              </Button>
-              <Button onClick={handleImport} disabled={!importFile || importing} className="font-semibold">
-                {importing ? 'Importando...' : 'Processar Importação'}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <ImportTestsModal
+          bus={bus}
+          clients={clients}
+          operations={operations}
+          segments={segments}
+          onClose={() => setShowImport(false)}
+          onImported={loadTests}
+        />
       )}
     </div>
   )

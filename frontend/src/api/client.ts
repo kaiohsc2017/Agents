@@ -22,7 +22,7 @@ const api = axios.create({
 
 // ---- Request interceptor: injeta JWT ----
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('voipia_token');
+  const token = localStorage.getItem('agentia_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -70,7 +70,7 @@ api.interceptors.response.use(
       try {
         // Sem body: o refresh token vai no cookie httpOnly (withCredentials).
         const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {}, { withCredentials: true });
-        localStorage.setItem('voipia_token', data.token);
+        localStorage.setItem('agentia_token', data.token);
 
         processQueue(null, data.token);
         originalRequest.headers.Authorization = `Bearer ${data.token}`;
@@ -101,7 +101,9 @@ api.interceptors.response.use(
  * chama já está tratando o encerramento da sessão local).
  */
 export function revokeSession() {
-  return axios.post(`${BASE_URL}/auth/logout`, {}, { withCredentials: true }).catch(() => {});
+  return axios.post(`${BASE_URL}/auth/logout`, {}, { withCredentials: true }).catch((error) => {
+    console.error('Falha ao revogar sessão no backend (logout local prossegue mesmo assim):', error);
+  });
 }
 
 /**
@@ -119,8 +121,8 @@ export function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 function logout() {
-  localStorage.removeItem('voipia_token');
-  localStorage.removeItem('voipia_user');
+  localStorage.removeItem('agentia_token');
+  localStorage.removeItem('agentia_user');
   revokeSession();
   window.dispatchEvent(new Event('voipia:logout'));
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Server, Plus, Pencil, Trash2, RefreshCw, CheckCircle2, XCircle, Key, Lock, X } from 'lucide-react';
 import agentsApi, { getErrorMessage } from './agentsClient';
 import type { PaginatedResponse, ServerEntry, ServerTestResult } from './types';
@@ -37,11 +37,23 @@ export default function AgentsServers({ canWrite = true }: { canWrite?: boolean 
   const [testResults, setTestResults] = useState<Record<string, ServerTestResult>>({});
   const [tagInput, setTagInput] = useState('');
   const [flashMsg, setFlashMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const flashMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const notify = (text: string, type: 'success' | 'error' = 'success') => {
     setFlashMsg({ type, text });
-    setTimeout(() => setFlashMsg(null), 4000);
+    if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    flashMsgTimerRef.current = setTimeout(() => {
+      flashMsgTimerRef.current = null;
+      setFlashMsg(null);
+    }, 4000);
   };
+
+  // Limpa o timer da mensagem flash ao desmontar, evitando setState em componente já desmontado.
+  useEffect(() => {
+    return () => {
+      if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    };
+  }, []);
 
   const load = () => {
     setLoading(true);

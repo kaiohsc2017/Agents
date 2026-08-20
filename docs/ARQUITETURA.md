@@ -213,9 +213,20 @@ O **Agent Flow Canvas** é o motor de orquestração visual de colaboração mul
 - **Modelo de Grafo Acíclico Dirigido (DAG):** Permite encadear múltiplos agentes, gatilhos de telefonia/infraestrutura, nós cognitivos (LLM + RAG) e atuadores de remediação em uma esteira autônoma de causa e efeito.
 - **Categorias de Blocos Visuais:**
   1. **⚡ Gatilhos (Triggers):** Falha em testes de 0800/DID (Módulo 2), Degradação de MOS Acústico (< 3.5), Agendamentos Temporais Cron, Alarmes Zabbix ou Webhooks.
-  2. **🔍 Coletores (Actions):** Análise acústica de QoS, execuções de comandos SSH em servidores Linux, consultas SQL em bancos corporativos e requisições HTTP REST.
+  2. **🔍 Coletores (Actions):** Análise acústica de QoS (real, `audio_qos`) — os demais tipos
+     (`ssh`, `http`, `sql`) **⚠️ NÃO ESTÃO IMPLEMENTADOS** nesta instalação: o motor
+     (`flow_engine.py`) registra explicitamente uma falha no histórico de execução em vez de
+     executar a ação, para nunca simular um resultado que não ocorreu de fato (correção
+     aplicada em 2026-08-19, auditoria achado A1).
   3. **🧠 Cognição & Decisão (Cognitive Nodes):** Avaliação de logs por LLMs (Google Gemini 2.5 Flash, Claude, OpenAI), consultas semânticas à base SOP via RAG vetorial e ramificações condicionais.
-  4. **🚀 Atuadores & Auto-Cura (Actuators):** Failover dinâmico de troncos SIP via Asterisk AMI, originação de chamadas de voz com aviso falado e disparo de alertas formatados no Telegram/Jira.
+  4. **🚀 Atuadores (Actuators):** **⚠️ NÃO ESTÃO IMPLEMENTADOS** nesta instalação — nem o
+     failover de tronco SIP via AMI (`asterisk_action`), nem a originação de chamada de voz
+     (`voice_call`), nem o envio ao Telegram (`telegram`). A ideia de "Auto-Cura" (comutação
+     automática de tronco em resposta a degradação de MOS) descreve um comportamento **que
+     este Flow Canvas não executa de fato**: o nó correspondente sempre registra falha
+     explícita no histórico, nunca uma comutação real (correção aplicada em 2026-08-19,
+     auditoria achado A1). Reintroduzir esses atuadores exige implementar a integração real
+     (AMI, API do Telegram, originação de chamada) antes de reabilitá-los.
 - **Interpolação de Contexto em Tempo Real:** Mecanismo de templates `{{node_id.campo}}` que repassa payloads de saída de um nó como variáveis de entrada para os nós subsequentes do DAG.
 - **Rastreabilidade e Linha do Tempo:** Persistência transacional em `agent_flows`, `flow_executions` e `flow_execution_steps` com telemetria precisa de duração em milissegundos e status por etapa.
 
@@ -241,8 +252,13 @@ O motor de IA acústica (`audio_qos.py`) atua como auditor perceptual de qualida
 2. **Filtragem de Severidade:** Apenas incidentes ativos com severidade igual ou superior a `ZABBIX_MIN_SEVERITY` (Padrão: 4 — High / 5 — Disaster) entram na esteira de tratamento.
 3. **Fila de Acionamento:** Para cada incidente não reconhecido (*unacknowledged*):
    - Localiza a escala de plantonistas ativa no horário do incidente.
-   - Origina ligação telefônica automática com sintetização do nome do host e trigger afetada.
-   - Dispara notificação formatada no Telegram corporativo com botões de ação rápida.
+   - Origina ligação telefônica automática — **⚠️ NÃO DISPONÍVEL NESTA INSTALAÇÃO**: o
+     dialplan do alerta de voz (`[asteriskia-alert]`) depende de `AudioSocket(...,
+     ai-agent:9092)`, e o serviço `ai-agent` não existe nesta stack. A ligação é originada e
+     atendida, mas encerra imediatamente com um aviso de "função não disponível" em vez de
+     sintetizar a causa raiz (correção aplicada em 2026-08-19, auditoria achado G1).
+   - Dispara notificação formatada no Telegram corporativo com botões de ação rápida — esta
+     parte permanece real/operacional, independente da ligação de voz.
 
 ---
 

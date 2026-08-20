@@ -1,13 +1,19 @@
 """routers/reports.py — relatório de execução e alertas"""
 import json
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse
 from uuid import UUID
 from database import DB, fetch_recent_alerts
 from routers.report_html import render_execution_report_html
+from auth import require_permission
 
 router = APIRouter()
-@router.get("/execution/{execution_id}")
+
+# Todas as rotas deste router são somente leitura — exige PERM_READ_agents.reports (ou
+# ADMIN legado). resource_key já existente no catálogo Java (ResourceCatalog.java, AGENTS).
+_READ = [Depends(require_permission("agents.reports", "read"))]
+
+@router.get("/execution/{execution_id}", dependencies=_READ)
 async def execution_report(execution_id: UUID):
     """Relatório completo de uma execução — para tela de detalhe."""
     async with DB() as db:
@@ -63,7 +69,7 @@ async def execution_report(execution_id: UUID):
         "summary":        exec_data.get("summary", ""),
     }
 
-@router.get("/execution/{execution_id}/html", response_class=HTMLResponse)
+@router.get("/execution/{execution_id}/html", response_class=HTMLResponse, dependencies=_READ)
 async def execution_report_html(execution_id: UUID):
     """Relatório HTML exportável de uma execução."""
     data = await execution_report(execution_id)
@@ -71,11 +77,11 @@ async def execution_report_html(execution_id: UUID):
         return HTMLResponse("<p>Execução não encontrada.</p>", status_code=404)
     return HTMLResponse(render_execution_report_html(data))
 
-@router.get("/alerts")
+@router.get("/alerts", dependencies=_READ)
 async def recent_alerts(limit: int = Query(default=50, le=500)):
     return await fetch_recent_alerts(limit)
 
-@router.get("/alerts/unread-count")
+@router.get("/alerts/unread-count", dependencies=_READ)
 async def unread_count():
     async with DB() as db:
         count = await db.fetchval(

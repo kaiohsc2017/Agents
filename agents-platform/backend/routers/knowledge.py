@@ -1,11 +1,14 @@
 """routers/knowledge.py — base de conhecimento (PDFs)"""
 import asyncio
 import io
+import logging
 import uuid
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
 from database import DB
 from auth import require_permission
+
+logger = logging.getLogger("asteriskia.knowledge")
 
 router = APIRouter()
 
@@ -20,11 +23,24 @@ _MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
 
 def _extract_pdf_text(data: bytes) -> str:
     """Extração de texto do PDF — roda em thread pois é CPU-bound e bloqueia o event loop."""
+    # Achado M7 da auditoria: validar só a extensão ".pdf" do nome do arquivo
+    # não garante que o conteúdo seja um PDF de verdade — um arquivo qualquer
+    # renomeado caía no fallback abaixo e era decodificado/persistido como
+    # texto puro na base de conhecimento (vetor de prompt injection indireto
+    # via RAG). Valida magic bytes ANTES de tentar o parsing.
+    if data[:5] != b"%PDF-":
+        raise HTTPException(400, "Arquivo não é um PDF válido")
     try:
         import pypdf
         reader = pypdf.PdfReader(io.BytesIO(data))
         return "\n".join(p.extract_text() or "" for p in reader.pages)
-    except Exception:
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Achado B3 da auditoria: com a validação de magic bytes acima, este
+        # fallback só deveria ser alcançado por PDF corrompido (mas com header
+        # válido) — não mais por arquivo disfarçado. Loga a falha real.
+        logger.warning("Falha ao extrair texto de PDF corrompido: %s", e)
         return data.decode("utf-8", errors="ignore")
 
 @router.get("/")

@@ -19,6 +19,7 @@ interface AsteriskFilePanelProps {
   saveLabel?: string
   open?: boolean
   minRows?: number
+  hasWrite?: boolean
   onToggle?: () => void
   onChange: (v: string) => void
   onDiscard?: () => void
@@ -40,6 +41,7 @@ export function AsteriskFilePanel({
   saveLabel = 'Salvar e Recarregar Asterisk',
   open: controlledOpen,
   minRows = 12,
+  hasWrite = true,
   onToggle: controlledToggle,
   onChange,
   onDiscard,
@@ -129,8 +131,9 @@ export function AsteriskFilePanel({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 spellCheck={false}
+                disabled={!hasWrite}
                 rows={Math.max(minRows, (value || '').split('\n').length + 2)}
-                className="w-full font-mono text-xs leading-relaxed p-3.5 rounded-xl bg-background border border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all placeholder:text-muted-foreground shadow-2xs resize-y"
+                className="w-full font-mono text-xs leading-relaxed p-3.5 rounded-xl bg-background border border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all placeholder:text-muted-foreground shadow-2xs resize-y disabled:opacity-60 disabled:cursor-not-allowed"
                 placeholder="; Configuração Asterisk..."
               />
             </div>
@@ -165,7 +168,7 @@ export function AsteriskFilePanel({
                 variant="outline"
                 size="sm"
                 onClick={handleDiscard}
-                disabled={!changed || saving}
+                disabled={!changed || saving || !hasWrite}
                 className="text-xs h-8"
               >
                 <RotateCcw className="h-3.5 w-3.5 mr-1" />
@@ -175,7 +178,7 @@ export function AsteriskFilePanel({
                 variant="default"
                 size="sm"
                 onClick={onSave}
-                disabled={saving || !(value || '').trim()}
+                disabled={saving || !(value || '').trim() || !hasWrite}
                 className="text-xs h-8 font-semibold shadow-xs"
               >
                 {saving ? (

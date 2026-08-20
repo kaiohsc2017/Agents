@@ -113,7 +113,11 @@ As migrações SQL residem em `backend/src/main/resources/db/migration/`:
 - Endpoints de Ramal:
   - `1001`, `1002`: Ramais SIP físicos / softphones de teste.
   - `9001`, `9002`: Ramais WebRTC vinculados ao softphone integrado do painel web.
-  - `2000-2999`: Faixa dinâmica alocada para URAs inteligentes.
+  - `2000-2999`: Faixa reservada no dialplan para URAs de voz. **⚠️ NÃO DISPONÍVEL NESTA
+    INSTALAÇÃO** — o dialplan chama `AudioSocket(...,ai-agent:9092)`, mas o serviço
+    `ai-agent` não existe nesta stack (nem no `docker-compose.yml`, nem como diretório no
+    repositório). Toda chamada para esta faixa recebe um aviso de "função não disponível" e
+    é encerrada (correção aplicada em 2026-08-19, auditoria achado G1).
 
 ### 5.2. Asterisk Manager Interface (AMI)
 - O backend Spring Boot conecta-se à porta `5038/tcp` do Asterisk através de conexão TCP persistente.

@@ -1,4 +1,6 @@
 """routers/servers.py"""
+import logging
+
 from fastapi import APIRouter, HTTPException, Depends, Query
 from uuid import UUID
 from models import ServerCreate
@@ -6,6 +8,8 @@ from database import DB
 from executor import _build_ssh_kwargs
 from auth import require_permission
 import asyncssh, json
+
+logger = logging.getLogger("asteriskia.servers")
 
 router = APIRouter()
 
@@ -66,4 +70,7 @@ async def test_connection(server_id: UUID):
             result = await conn.run("echo ok && uname -a", check=True)
             return {"ok": True, "output": result.stdout.strip()}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        # Nunca repassa a exceção crua ao cliente — pode vazar host/usuário/porta/mensagem
+        # interna do asyncssh. Detalhe real só no log do servidor (mesmo padrão de llm.py).
+        logger.warning("Falha no teste de conexão SSH do servidor %s: %s", server_id, e)
+        return {"ok": False, "error": "Falha ao conectar — verifique host, porta e credenciais."}

@@ -163,8 +163,11 @@ Exibe a esteira de incidentes críticos de infraestrutura capturados via integra
 ```
 
 #### Funcionalidades:
-- **Discagem Automática:** Ao detectar um incidente com severidade `>= High`, o sistema localiza o plantonista e realiza uma chamada de voz com sintetização IA da causa raiz.
-- **Botão Rechamar:** Permite forçar uma nova chamada manual para a equipe caso o incidente persista sem reconhecimento (*ACK*).
+- **Discagem Automática:** Ao detectar um incidente com severidade `>= High`, o sistema localiza o plantonista e origina a ligação. **⚠️ A sintetização por IA da causa raiz NÃO ESTÁ
+  DISPONÍVEL nesta instalação** — o serviço que faria essa locução (`ai-agent`) não existe
+  nesta stack; a ligação é atendida e encerrada com um aviso de "função não disponível"
+  (correção aplicada em 2026-08-19, auditoria achado G1).
+- **Botão Rechamar:** Permite forçar uma nova chamada manual para a equipe caso o incidente persista sem reconhecimento (*ACK*) — sujeito à mesma limitação acima.
 
 ---
 
@@ -187,6 +190,15 @@ A plataforma de Agentes Autônomos está **nativamente integrada** à interface 
 9. 🧩 **Agent Flow Canvas (DAG Swarm):** Estúdio visual interativo *drag-and-drop* no padrão ReportECH para criação e orquestração de fluxos multi-agente sem código.
 
 #### 3.4.1. Como Usar o Agent Flow Canvas (Orquestrador Visual DAG)
+
+> **⚠️ NÃO DISPONÍVEL NESTA INSTALAÇÃO:** dos tipos de nó da paleta abaixo, os coletores
+> **Diagnóstico SSH**, **Consulta SQL** e o coletor HTTP, e os atuadores **Failover PBX**,
+> **Chamada de Voz** e **Alerta Telegram** ainda não estão implementados — o motor registra
+> uma falha explícita no histórico de execução em vez de simular sucesso. A "Auto-Remediação
+> de Tronco 0800" ilustrada abaixo (comutação real de tronco no Asterisk) **não ocorre de
+> fato** nesta instalação. Apenas o coletor de **Análise Acústica QoS** e os nós de
+> Raciocínio LLM/RAG executam ação real hoje (correção aplicada em 2026-08-19, auditoria
+> achado A1).
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐

@@ -3,16 +3,25 @@ routers/flows.py — Endpoints para o Agent Flow Canvas (Pilar 5)
 CRUD de Fluxos Visuais, Disparo Assíncrono e Consulta de Etapas de Execução.
 """
 import json
+import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from database import DB
 from flow_engine import run_flow
+from auth import require_permission
+
+logger = logging.getLogger("asteriskia.flows")
 
 router = APIRouter()
+
+# CRUD/execução de fluxos exige PERM_READ/WRITE_agents.flows (ou ADMIN legado) —
+# resource_key já existente no catálogo Java (ResourceCatalog.java, AGENTS).
+_READ  = [Depends(require_permission("agents.flows", "read"))]
+_WRITE = [Depends(require_permission("agents.flows", "write"))]
 
 
 class FlowCreate(BaseModel):
@@ -38,7 +47,7 @@ class FlowRunRequest(BaseModel):
     trigger_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
-@router.get("/")
+@router.get("/", dependencies=_READ)
 async def list_flows():
     """Lista todos os fluxos de automação cadastrados."""
     async with DB() as conn:
@@ -68,7 +77,7 @@ async def list_flows():
         ]
 
 
-@router.get("/{flow_id}")
+@router.get("/{flow_id}", dependencies=_READ)
 async def get_flow(flow_id: UUID):
     """Retorna os dados completos do fluxo, incluindo o grafo visual (nodes e edges)."""
     async with DB() as conn:
@@ -106,23 +115,24 @@ async def get_flow(flow_id: UUID):
         }
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_flow(req: FlowCreate):
+@router.post("/", status_code=status.HTTP_201_CREATED, dependencies=_WRITE)
+async def create_flow(req: FlowCreate, request: Request):
     """Cria um novo fluxo visual de agentes."""
+    created_by = getattr(request.state, "user", "desconhecido") or "desconhecido"
     async with DB() as conn:
         row = await conn.fetchrow(
             """
             INSERT INTO agent_flows (name, description, is_active, trigger_type, trigger_config, graph_data, created_by)
-            VALUES ($1, $2, $3, $4, $5, $6, 'admin')
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id, name, created_at
             """,
             req.name, req.description, req.is_active, req.trigger_type,
-            json.dumps(req.trigger_config), json.dumps(req.graph_data)
+            json.dumps(req.trigger_config), json.dumps(req.graph_data), created_by
         )
         return {"id": str(row["id"]), "name": row["name"], "created_at": row["created_at"].isoformat()}
 
 
-@router.put("/{flow_id}")
+@router.put("/{flow_id}", dependencies=_WRITE)
 async def update_flow(flow_id: UUID, req: FlowUpdate):
     """Atualiza metadados ou o grafo visual de um fluxo."""
     async with DB() as conn:
@@ -172,7 +182,7 @@ async def update_flow(flow_id: UUID, req: FlowUpdate):
         return {"status": "updated", "id": str(flow_id)}
 
 
-@router.delete("/{flow_id}")
+@router.delete("/{flow_id}", dependencies=_WRITE)
 async def delete_flow(flow_id: UUID):
     """Remove um fluxo e seu histórico de execuções."""
     async with DB() as conn:
@@ -182,7 +192,7 @@ async def delete_flow(flow_id: UUID):
         return {"status": "deleted", "id": str(flow_id)}
 
 
-@router.post("/{flow_id}/run")
+@router.post("/{flow_id}/run", dependencies=_WRITE)
 async def run_flow_endpoint(flow_id: UUID, req: Optional[FlowRunRequest] = None):
     """Dispara a execução assíncrona imediata do fluxo."""
     trigger_src = req.trigger_source if req else "manual_ui"
@@ -194,10 +204,17 @@ async def run_flow_endpoint(flow_id: UUID, req: Optional[FlowRunRequest] = None)
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao executar fluxo: {e}")
+        # Achado A5 da auditoria: str(e) cru vazava detalhe interno (ex: erro de
+        # asyncpg/asyncssh com DSN/senha) direto na resposta HTTP. Loga completo
+        # no servidor, devolve mensagem genérica ao cliente.
+        logger.error("Erro ao executar fluxo %s: %s", flow_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Erro ao executar fluxo — verifique os logs do backend.",
+        )
 
 
-@router.get("/{flow_id}/executions")
+@router.get("/{flow_id}/executions", dependencies=_READ)
 async def list_flow_executions(flow_id: UUID):
     """Lista as execuções recentes de um fluxo específico."""
     async with DB() as conn:
@@ -228,7 +245,7 @@ async def list_flow_executions(flow_id: UUID):
         ]
 
 
-@router.get("/executions/{exec_id}/details")
+@router.get("/executions/{exec_id}/details", dependencies=_READ)
 async def get_execution_details(exec_id: UUID):
     """Retorna detalhes da execução de um fluxo com o passo-a-passo de cada nó."""
     async with DB() as conn:

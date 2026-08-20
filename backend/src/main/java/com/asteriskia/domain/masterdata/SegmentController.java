@@ -35,7 +35,12 @@ public class SegmentController {
     public ResponseEntity<List<Segment>> listSegments(
             @RequestParam(required = false) Boolean active) {
         List<Segment> result = active != null ? segRepo.findByIsActive(active) : segRepo.findAll();
-        return ResponseEntity.ok(result);
+        // Segment não tem vínculo de BU (List.of() → sempre "sem BU", visível a todos, mesma
+        // semântica de item sem BU em ClientController/OperationController) — mesmo padrão de
+        // MasterDataScopeFilter aplicado por consistência, hoje sem efeito filtrante real até que
+        // Segment ganhe um vínculo de BU próprio.
+        return ResponseEntity.ok(
+                MasterDataScopeFilter.filterByBusinessUnitScope(result, s -> List.of()));
     }
 
     @PostMapping

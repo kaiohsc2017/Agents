@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Bot,
   Plus,
@@ -47,11 +47,27 @@ export default function AgentsList({ canWrite = true }: { canWrite?: boolean }) 
   const [logsAgent, setLogsAgent] = useState<{ id: string; name: string } | null>(null);
   const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
   const [flashMsg, setFlashMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const flashMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reloadAfterRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runningIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const notify = (text: string, type: 'success' | 'error' = 'success') => {
     setFlashMsg({ type, text });
-    setTimeout(() => setFlashMsg(null), 4000);
+    if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    flashMsgTimerRef.current = setTimeout(() => {
+      flashMsgTimerRef.current = null;
+      setFlashMsg(null);
+    }, 4000);
   };
+
+  // Limpa todos os timers do componente ao desmontar, evitando setState em componente já desmontado.
+  useEffect(() => {
+    return () => {
+      if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+      if (reloadAfterRunTimerRef.current) clearTimeout(reloadAfterRunTimerRef.current);
+      if (runningIdTimerRef.current) clearTimeout(runningIdTimerRef.current);
+    };
+  }, []);
 
   const load = () => {
     setLoading(true);
@@ -114,11 +130,17 @@ export default function AgentsList({ canWrite = true }: { canWrite?: boolean }) 
       .post(`/api/agents/${agent.id}/run`, {})
       .then(() => {
         notify(`Execução do agente "${agent.name}" iniciada.`);
-        setTimeout(load, 1500);
+        if (reloadAfterRunTimerRef.current) clearTimeout(reloadAfterRunTimerRef.current);
+        reloadAfterRunTimerRef.current = setTimeout(() => {
+          reloadAfterRunTimerRef.current = null;
+          load();
+        }, 1500);
       })
       .catch((err) => notify(getErrorMessage(err, 'Falha ao iniciar execução.'), 'error'))
       .finally(() => {
-        setTimeout(() => {
+        if (runningIdTimerRef.current) clearTimeout(runningIdTimerRef.current);
+        runningIdTimerRef.current = setTimeout(() => {
+          runningIdTimerRef.current = null;
           setRunningIds((prev) => {
             const next = new Set(prev);
             next.delete(agent.id);

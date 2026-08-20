@@ -3,8 +3,19 @@ set -e
 
 echo "[security] Iniciando VoipIA Security Container..."
 
-# Débito de segurança corrigido: GID compartilhado 1500 (grupo "voipia-app" no
-# host) via setgid nos diretórios — backend (não-root, mesmo GID) acessa o socket do
+# Débito de segurança corrigido: GID compartilhado 1500 via setgid nos
+# diretórios — backend (não-root, mesmo GID) acessa o socket do
+# fail2ban e a fila de comandos sem precisar de 777 nem de root. Setgid garante que
+#
+# B10 (auditoria 2026-08-20, achado BAIXO, puramente cosmético): o nome do
+# grupo Unix diverge entre host ("asteriskia-app", já provisionado em produção)
+# e os containers (Dockerfiles usam "voipia-app") — mesmo GID 1500 nos dois
+# lados, então não há NENHUM impacto funcional (permissão no Linux é resolvida
+# por GID numérico, não por nome). Não renomeado nesta sessão: unificar de
+# verdade exigiria também renomear o grupo já provisionado no host de
+# produção, fora do escopo desta correção (instrução explícita de não alterar
+# provisionamento de host já em produção). Documentado aqui em vez de
+# corrigido.
 # fail2ban e a fila de comandos sem precisar de 777 nem de root. Setgid garante que
 # QUALQUER processo (mesmo root, como o próprio fail2ban-server/watcher aqui) que criar
 # um arquivo novo dentro herda o grupo do diretório — não depende do GID de quem escreve.

@@ -1,8 +1,9 @@
 """notifier.py — envio de alertas: Telegram, Web, E-mail, Webhook"""
-import asyncio, aiohttp, os, json, smtplib, ssl, logging, socket, ipaddress
+import asyncio, aiohttp, os, json, smtplib, ssl, logging
 from email.mime.text import MIMEText
-from urllib.parse import urlparse
 from datetime import datetime, timezone
+
+from ssrf_guard import is_safe_public_url
 
 logger = logging.getLogger("asteriskia.notifier")
 
@@ -55,31 +56,11 @@ async def send_email(to: str, subject: str, body: str) -> bool:
         logger.error("[notifier] e-mail error: %s", e)
         return False
 
-async def _is_safe_public_url(url: str) -> bool:
-    """Achado de segurança (SSRF): notify_webhook_url é campo livre, editável
-    por qualquer usuário com PERM_WRITE_agents.agents — sem esta checagem,
-    alguém aponta pra 172.16.7.11:5432 ou 169.254.169.254 e força o
-    container a fazer a requisição. Resolve o host e bloqueia qualquer IP
-    privado/loopback/link-local antes de disparar o POST."""
-    try:
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https") or not parsed.hostname:
-            return False
-        infos = await asyncio.to_thread(socket.getaddrinfo, parsed.hostname, None)
-        for family, _, _, _, sockaddr in infos:
-            ip = ipaddress.ip_address(sockaddr[0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-                return False
-        return True
-    except Exception:
-        return False
-
-
 async def send_webhook(url: str, payload: dict) -> bool:
     """Envia POST JSON para webhook configurado no agente."""
     if not url:
         return False
-    if not await _is_safe_public_url(url):
+    if not await is_safe_public_url(url):
         logger.warning("[notifier] webhook bloqueado — host privado/loopback/inválido: %s", url)
         return False
     try:

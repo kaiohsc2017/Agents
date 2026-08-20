@@ -12,6 +12,7 @@ import aiohttp
 from database import DB
 from llm import is_enabled as llm_enabled
 from notifier import send_telegram
+from ssrf_guard import is_safe_public_url
 from executors.common import ai_fallback, log, memory_recall, memory_save
 
 
@@ -67,42 +68,53 @@ class WebMonitorExecutor:
                 total += 1
                 entry = {"url": url, "ok": False, "reason": "", "status_code": None}
 
-                try:
-                    async with session.get(url,
-                        timeout=aiohttp.ClientTimeout(total=tout), ssl=False) as resp:
-                        body   = await resp.text()
-                        status = resp.status
-                        ok     = True
-                        reason = f"HTTP {status}"
-                        entry["status_code"] = status
+                # Achado CR2 da auditoria (SSRF): a URL de monitoramento é campo
+                # livre, editável por qualquer usuário com PERM_WRITE_agents.agents
+                # — sem esta checagem, alguém aponta pra um host privado/interno
+                # (ex: 172.16.7.11:5432, 169.254.169.254) e força o container a
+                # fazer a requisição. Mesmo guard já usado em notifier.py — se a
+                # URL não passar, marca o check como falho sem nunca requisitar.
+                if not await is_safe_public_url(url):
+                    ok = False
+                    reason = ("URL bloqueada por política de segurança — não é "
+                               "possível monitorar host privado/interno.")
+                else:
+                    try:
+                        async with session.get(url,
+                            timeout=aiohttp.ClientTimeout(total=tout), ssl=False) as resp:
+                            body   = await resp.text()
+                            status = resp.status
+                            ok     = True
+                            reason = f"HTTP {status}"
+                            entry["status_code"] = status
 
-                        if "expect_status" in check and status != check["expect_status"]:
-                            ok     = False
-                            reason = f"status {status} ≠ esperado {check['expect_status']}"
-
-                        if ok and "expect_contains" in check:
-                            if check["expect_contains"] not in body:
+                            if "expect_status" in check and status != check["expect_status"]:
                                 ok     = False
-                                reason = f"'{check['expect_contains']}' não encontrado no body"
+                                reason = f"status {status} ≠ esperado {check['expect_status']}"
 
-                        if ok and "expect_json_key" in check:
-                            try:
-                                data = await resp.json(content_type=None)
-                                val  = data.get(check["expect_json_key"])
-                                if str(val) != str(check.get("expect_json_value", "")):
+                            if ok and "expect_contains" in check:
+                                if check["expect_contains"] not in body:
                                     ok     = False
-                                    reason = f"JSON {check['expect_json_key']}={val}"
-                            except Exception:
-                                ok = False; reason = "resposta não é JSON válido"
+                                    reason = f"'{check['expect_contains']}' não encontrado no body"
 
-                        if ok and "expect_response_time_ms" in check:
-                            # verificado após a requisição — aproximação
-                            pass
+                            if ok and "expect_json_key" in check:
+                                try:
+                                    data = await resp.json(content_type=None)
+                                    val  = data.get(check["expect_json_key"])
+                                    if str(val) != str(check.get("expect_json_value", "")):
+                                        ok     = False
+                                        reason = f"JSON {check['expect_json_key']}={val}"
+                                except Exception:
+                                    ok = False; reason = "resposta não é JSON válido"
 
-                except aiohttp.ClientError as e:
-                    ok = False; reason = f"erro de conexão: {e}"
-                except asyncio.TimeoutError:
-                    ok = False; reason = f"timeout ({tout}s)"
+                            if ok and "expect_response_time_ms" in check:
+                                # verificado após a requisição — aproximação
+                                pass
+
+                    except aiohttp.ClientError as e:
+                        ok = False; reason = f"erro de conexão: {e}"
+                    except asyncio.TimeoutError:
+                        ok = False; reason = f"timeout ({tout}s)"
 
                 if ok:
                     passed += 1

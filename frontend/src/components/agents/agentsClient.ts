@@ -9,10 +9,7 @@ const agentsApi: AxiosInstance = axios.create({
 });
 
 agentsApi.interceptors.request.use((config) => {
-  const token =
-    localStorage.getItem('agentia_token') ??
-    localStorage.getItem('voipia_token') ??
-    localStorage.getItem('asteriskia_token');
+  const token = localStorage.getItem('agentia_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

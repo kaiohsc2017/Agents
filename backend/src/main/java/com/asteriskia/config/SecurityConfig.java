@@ -59,11 +59,21 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/totp/verify",
                                 "/api/health",
-                                "/api/v1/ai/chain/active",
-                                "/api/v1/ai/providers/*/key-internal",
                                 "/actuator/health",
                                 "/ws/**"
                         ).permitAll()
+
+                        // CR1 (auditoria 2026-08-20): estas duas rotas devolvem a API key real
+                        // (sem mascaramento) e a chain ativa de modelo — chamadas só pelo ai-agent
+                        // Python via X-Internal-Key (InternalKeyFilter). Antes estavam em
+                        // permitAll(), vazando a chave de qualquer provedor de IA cadastrado para
+                        // qualquer pessoa na internet, sem autenticação. ATENÇÃO: ao fazer deploy
+                        // desta correção, rotacione a chave de API de TODOS os provedores de IA
+                        // já cadastrados (Gemini/etc.) — elas devem ser consideradas comprometidas.
+                        .requestMatchers(
+                                "/api/v1/ai/chain/active",
+                                "/api/v1/ai/providers/*/key-internal"
+                        ).hasAuthority("ROLE_INTERNAL")
 
                         // Gestão de grupos de acesso — ADMIN puro
                         .requestMatchers("/api/v1/access-groups/**").hasRole("ADMIN")
@@ -89,6 +99,32 @@ public class SecurityConfig {
                                 .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.linhas")
                         .requestMatchers(HttpMethod.GET, "/api/v1/operadoras/**")
                                 .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.operadoras")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/number-tests/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.modulo2")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/test-results/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.modulo2")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ad/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.users")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/clients/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.masterdata")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/operations/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.masterdata")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/segments/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.masterdata")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/business-units/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.masterdata")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/config/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.settings")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/stats/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.dashboard")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/reports/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.dashboard")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/suporte/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.modulo1")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/alert-calls/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.modulo3")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/alert-contacts/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_READ_telecom.modulo3")
 
                         // Escrita nos mesmos recursos — ADMIN ou PERM_WRITE granular.
                         .requestMatchers("/api/v1/security/**")
@@ -109,6 +145,32 @@ public class SecurityConfig {
                                 .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.linhas")
                         .requestMatchers("/api/v1/operadoras/**")
                                 .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.operadoras")
+                        .requestMatchers("/api/v1/number-tests/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.modulo2")
+                        .requestMatchers("/api/v1/test-results/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.modulo2")
+                        .requestMatchers("/api/v1/ad/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.users")
+                        .requestMatchers("/api/v1/clients/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.masterdata")
+                        .requestMatchers("/api/v1/operations/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.masterdata")
+                        .requestMatchers("/api/v1/segments/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.masterdata")
+                        .requestMatchers("/api/v1/business-units/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.masterdata")
+                        .requestMatchers("/api/v1/config/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.settings")
+                        .requestMatchers("/api/v1/stats/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.dashboard")
+                        .requestMatchers("/api/v1/reports/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.dashboard")
+                        .requestMatchers("/api/v1/suporte/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.modulo1")
+                        .requestMatchers("/api/v1/alert-calls/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.modulo3")
+                        .requestMatchers("/api/v1/alert-contacts/**")
+                                .hasAnyAuthority("ROLE_ADMIN", "PERM_WRITE_telecom.modulo3")
 
                         // Endpoints internos
                         .requestMatchers("/api/v1/internal/**").hasAuthority("ROLE_INTERNAL")

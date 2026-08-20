@@ -1,9 +1,13 @@
 """routers/llm_config.py — leitura, escrita e teste da configuração LLM"""
+import logging
+
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 from llm import cfg, ask, is_enabled, read_env_file, write_env_file, reload_config, PROVIDERS_CATALOG, ENV_KEYS
 from auth import require_permission
+
+logger = logging.getLogger("asteriskia.llm_config")
 
 router = APIRouter()
 
@@ -90,4 +94,7 @@ async def llm_test():
             "response": response[:400],
         }
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        # Nunca repassa a exceção crua ao cliente — pode vazar URL/parâmetros do provedor
+        # LLM. Detalhe real só no log do servidor (mesmo padrão já usado em llm.py).
+        logger.warning("Falha no teste de LLM (%s/%s): %s", cfg.provider, cfg.model, e)
+        return {"ok": False, "error": "Falha ao testar o LLM — verifique a configuração do provedor."}

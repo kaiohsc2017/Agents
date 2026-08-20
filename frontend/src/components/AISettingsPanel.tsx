@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import api from '../api/client'
+import { useAuthSession } from '../hooks/useAuthSession'
 import type { AiModelPricing, PricingFetchResult } from '../api/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -71,6 +72,9 @@ interface AISettingsPanelProps {
 }
 
 export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ open, onToggle }) => {
+  const { hasWrite: sessionHasWrite } = useAuthSession()
+  const hasWrite = sessionHasWrite('telecom.settings')
+
   const [providers, setProviders] = useState<ProviderDef[]>([])
   const [chains, setChains] = useState<Record<Capability, ChainEntry[]>>({ STT: [], LLM: [], TTS: [] })
   const [saving, setSaving] = useState(false)
@@ -360,56 +364,62 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ open, onToggle
                               {idx === 0 ? 'primário' : `fallback ${idx}`}
                             </Badge>
 
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeEntry(cap.id, idx)}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-                              title="Remover"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {hasWrite && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeEntry(cap.id, idx)}
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                                title="Remover"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         ))
                       )}
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openAddModal(cap.id)}
-                      className="w-full text-xs h-8 border-dashed hover:border-primary/50 text-muted-foreground hover:text-foreground"
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Adicionar Provedor de Fallback ({cap.id})
-                    </Button>
+                    {hasWrite && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAddModal(cap.id)}
+                        className="w-full text-xs h-8 border-dashed hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Adicionar Provedor de Fallback ({cap.id})
+                      </Button>
+                    )}
                   </div>
                 )
               })}
             </div>
 
             {/* Salvar Chains */}
-            <div className="flex justify-end pt-3 border-t border-border/50">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={saveChains}
-                disabled={saving}
-                className="text-xs h-8 font-semibold shadow-xs"
-              >
-                {saving ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Salvando Chains...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-3.5 w-3.5 mr-1.5" />
-                    Salvar Chains de IA
-                  </>
-                )}
-              </Button>
-            </div>
+            {hasWrite && (
+              <div className="flex justify-end pt-3 border-t border-border/50">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={saveChains}
+                  disabled={saving}
+                  className="text-xs h-8 font-semibold shadow-xs"
+                >
+                  {saving ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      Salvando Chains...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3.5 w-3.5 mr-1.5" />
+                      Salvar Chains de IA
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
 
             {/* ── API Keys ── */}
             <div className="space-y-3 pt-3 border-t border-border/50">
@@ -442,7 +452,7 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ open, onToggle
                       )}
                     </div>
 
-                    {prov.id !== 'local' && (
+                    {prov.id !== 'local' && hasWrite && (
                       editingKey === prov.id ? (
                         <div className="flex gap-1.5 pt-1">
                           <Input
@@ -501,16 +511,18 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ open, onToggle
                     Utilizado para precificar e monitorar chamadas em tempo real. Atualização diária automatizada.
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={syncPricesNow}
-                  disabled={syncing}
-                  className="text-xs h-8 shrink-0"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
-                  {syncing ? 'Atualizando...' : 'Atualizar Preços'}
-                </Button>
+                {hasWrite && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={syncPricesNow}
+                    disabled={syncing}
+                    className="text-xs h-8 shrink-0"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
+                    {syncing ? 'Atualizando...' : 'Atualizar Preços'}
+                  </Button>
+                )}
               </div>
 
               <div className="divide-y divide-border/50 rounded-xl border border-border/70 overflow-hidden bg-card">
@@ -579,14 +591,16 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ open, onToggle
                           <div className="font-mono text-xs">
                             In: <strong>${p.pricePerMillionInputUsd.toFixed(2)}</strong> / Out: <strong>${p.pricePerMillionOutputUsd.toFixed(2)}</strong>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => startEditPrice(p)}
-                            className="h-7 text-xs px-2.5 text-muted-foreground hover:text-foreground"
-                          >
-                            Editar
-                          </Button>
+                          {hasWrite && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => startEditPrice(p)}
+                              className="h-7 text-xs px-2.5 text-muted-foreground hover:text-foreground"
+                            >
+                              Editar
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -748,7 +762,7 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ open, onToggle
                 variant="default"
                 size="sm"
                 onClick={confirmAdd}
-                disabled={!selProvider || !selModel}
+                disabled={!selProvider || !selModel || !hasWrite}
                 className="text-xs h-8 font-semibold"
               >
                 Adicionar à Chain

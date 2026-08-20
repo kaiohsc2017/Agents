@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Save, RefreshCw, Play, CheckCircle2, XCircle, Eye, EyeOff, Lock } from 'lucide-react';
 import agentsApi, { getErrorMessage } from './agentsClient';
 import type { LlmConfigForm, LlmProvider, LlmStatus, LlmTestResult } from './types';
@@ -18,11 +18,23 @@ export default function AgentsLlmSettings({ canWrite = true }: { canWrite?: bool
   const [testResult, setTestResult] = useState<LlmTestResult | null>(null);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [flashMsg, setFlashMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const flashMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const notify = (text: string, type: 'success' | 'error' = 'success') => {
     setFlashMsg({ type, text });
-    setTimeout(() => setFlashMsg(null), 4000);
+    if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    flashMsgTimerRef.current = setTimeout(() => {
+      flashMsgTimerRef.current = null;
+      setFlashMsg(null);
+    }, 4000);
   };
+
+  // Limpa o timer da mensagem flash ao desmontar, evitando setState em componente já desmontado.
+  useEffect(() => {
+    return () => {
+      if (flashMsgTimerRef.current) clearTimeout(flashMsgTimerRef.current);
+    };
+  }, []);
 
   const toggleReveal = (k: string) => {
     setRevealed((prev) => ({ ...prev, [k]: !prev[k] }));

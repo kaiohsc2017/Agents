@@ -47,8 +47,13 @@ public class FailToBanClient {
             log.debug("f2b [{}]: {}", String.join(" ", args), out.trim());
             return out.trim();
         } catch (Exception e) {
-            log.warn("f2bExec {}: {}", String.join(" ", args), e.getMessage());
-            return "error: " + e.getMessage();
+            // B1/B2 (auditoria 2026-08-20): log com stacktrace completo (não só getMessage())
+            // e retorno genérico — este valor de retorno é embutido sem tratamento na resposta
+            // JSON de SecurityController.ban()/unban() (campo "fail2ban"/"results"), então
+            // e.getMessage() aqui chegaria ao cliente ADMIN, podendo expor detalhe interno do
+            // sistema (caminho de arquivo, erro de processo, etc.).
+            log.warn("f2bExec {} falhou", String.join(" ", args), e);
+            return "error: falha ao executar comando fail2ban";
         }
     }
 

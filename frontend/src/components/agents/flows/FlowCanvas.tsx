@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -76,6 +76,16 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openExecutionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Limpa todos os timers do componente ao desmontar, evitando setState em componente já desmontado.
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      if (openExecutionTimerRef.current) clearTimeout(openExecutionTimerRef.current);
+    };
+  }, []);
 
   // Manipulação de Nós
   const onNodesChange = useCallback(
@@ -102,7 +112,7 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const selectedNodeData = selectedNode?.data as FlowNodeData | undefined;
 
   // Atualização dos dados do nó selecionado
-  const updateSelectedNodeData = (field: keyof FlowNodeData, value: any) => {
+  const updateSelectedNodeData = (field: keyof FlowNodeData, value: FlowNodeData[keyof FlowNodeData]) => {
     if (!selectedNodeId) return;
     setNodes((nds) =>
       nds.map((n) => {
@@ -128,7 +138,21 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
   };
 
   // Adicionar novo bloco no canvas
-  const addNode = (category: 'triggerNode' | 'actionNode' | 'cognitiveNode' | 'actuatorNode', subType: string, label: string) => {
+  type TriggerSubType = NonNullable<FlowNodeData['triggerType']>;
+  type ActionSubType = NonNullable<FlowNodeData['actionType']>;
+  type CognitiveSubType = NonNullable<FlowNodeData['cognitiveType']>;
+  type ActuatorSubType = NonNullable<FlowNodeData['actuatorType']>;
+  type NodeSubType = TriggerSubType | ActionSubType | CognitiveSubType | ActuatorSubType;
+
+  function addNode(category: 'triggerNode', subType: TriggerSubType, label: string): void;
+  function addNode(category: 'actionNode', subType: ActionSubType, label: string): void;
+  function addNode(category: 'cognitiveNode', subType: CognitiveSubType, label: string): void;
+  function addNode(category: 'actuatorNode', subType: ActuatorSubType, label: string): void;
+  function addNode(
+    category: 'triggerNode' | 'actionNode' | 'cognitiveNode' | 'actuatorNode',
+    subType: NodeSubType,
+    label: string
+  ) {
     const newId = `node_${Date.now().toString().slice(-4)}`;
     const newNode: Node<FlowNodeData> = {
       id: newId,
@@ -137,15 +161,15 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
       data: {
         label,
         subtext: `Configuração de ${subType}`,
-        ...(category === 'triggerNode' ? { triggerType: subType as any } : {}),
-        ...(category === 'actionNode' ? { actionType: subType as any } : {}),
-        ...(category === 'cognitiveNode' ? { cognitiveType: subType as any } : {}),
-        ...(category === 'actuatorNode' ? { actuatorType: subType as any } : {}),
+        ...(category === 'triggerNode' ? { triggerType: subType as TriggerSubType } : {}),
+        ...(category === 'actionNode' ? { actionType: subType as ActionSubType } : {}),
+        ...(category === 'cognitiveNode' ? { cognitiveType: subType as CognitiveSubType } : {}),
+        ...(category === 'actuatorNode' ? { actuatorType: subType as ActuatorSubType } : {}),
       },
     };
     setNodes((nds) => [...nds, newNode]);
     setSelectedNodeId(newId);
-  };
+  }
 
   // Salvar Fluxo
   const handleSave = async () => {
@@ -183,7 +207,11 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
         is_active: isActive,
         graph_data: graphData,
       });
-      setTimeout(() => setFeedback(null), 3000);
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      feedbackTimerRef.current = setTimeout(() => {
+        feedbackTimerRef.current = null;
+        setFeedback(null);
+      }, 3000);
     } catch (err: any) {
       setFeedback({ type: 'error', msg: err.response?.data?.detail || 'Erro ao salvar fluxo.' });
     } finally {
@@ -202,7 +230,11 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
       });
       setFeedback({ type: 'success', msg: 'Fluxo disparado com sucesso! Abrindo timeline...' });
       if (res.data?.execution_id) {
-        setTimeout(() => onOpenExecution(res.data.execution_id), 800);
+        if (openExecutionTimerRef.current) clearTimeout(openExecutionTimerRef.current);
+        openExecutionTimerRef.current = setTimeout(() => {
+          openExecutionTimerRef.current = null;
+          onOpenExecution(res.data.execution_id);
+        }, 800);
       }
     } catch (err: any) {
       setFeedback({ type: 'error', msg: err.response?.data?.detail || 'Falha na execução do fluxo.' });

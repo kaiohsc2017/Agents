@@ -65,6 +65,28 @@ public class AppUser {
     private Boolean totpEnabled = false;
 
     /**
+     * Secret SIP aleatório do ramal deste usuário (V95) — gerado sob demanda na primeira
+     * consulta a {@code GET /users/{id}/extension-password} e persistido. Nullable: usuários
+     * criados antes da V95 (ou nunca consultados) ainda não têm valor gerado.
+     *
+     * <p><b>Achado A9 da auditoria de 2026-08-20 — cifragem em repouso implementada</b>: o valor
+     * gravado neste campo é cifrado em repouso (AES-256-GCM via {@code javax.crypto.Cipher}, ver
+     * {@link SipSecretCipher}) sempre que a variável de ambiente
+     * {@code SIP_SECRET_ENCRYPTION_KEY} estiver configurada com uma chave válida (Base64 de
+     * exatamente 32 bytes). A cifragem/decifragem acontece na camada de aplicação
+     * ({@link UserController#getExtensionPassword}) — este campo em si sempre armazena a
+     * representação bruta persistida (texto cifrado em Base64, ou texto plano em modo de
+     * compatibilidade), nunca decodifica nada sozinho. Sem a chave configurada, o sistema opera
+     * em modo passthrough (fail-open, documentado em {@link SipSecretCipher}): grava e lê o
+     * valor em texto plano, sem quebrar. Valores gravados antes desta mudança (ou gravados em
+     * modo passthrough) continuam legíveis normalmente — {@link SipSecretCipher#decrypt} trata
+     * qualquer valor fora do formato cifrado esperado como texto plano legado, sem exigir
+     * migração de dados.
+     */
+    @Column(name = "sip_secret", length = 64)
+    private String sipSecret;
+
+    /**
      * Unidades de Negócio (BU) do usuário — obrigatório, restringe os dados visíveis a essas BUs.
      * EAGER (não LAZY): businessUnitIds() é chamado em AuthController/TotpController fora de
      * qualquer transação (após o AppUser já ter saído do repositório) — LAZY aqui vira

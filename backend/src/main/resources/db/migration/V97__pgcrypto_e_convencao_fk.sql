@@ -1,0 +1,34 @@
+-- =============================================================
+-- V97 — Habilita pgcrypto (A9) + documenta a convenção de FK do projeto (M12)
+--
+-- A9 (auditoria 2026-08-20, achado ALTO): app_users.sip_secret (V95) é
+-- gravado em texto plano no banco. Este passo apenas HABILITA a extensão
+-- pgcrypto, pré-requisito para uma futura cifragem em repouso — não migra
+-- nenhum dado já existente (seria arriscado fazer isso em SQL puro de
+-- migration, sem a chave de cifragem disponível nesse momento de boot).
+--
+-- LIMITAÇÃO CONHECIDA, DOCUMENTADA DELIBERADAMENTE: a cifragem/decifragem
+-- de fato (lado da aplicação, AES-GCM via javax.crypto, chave vinda de
+-- SIP_SECRET_ENCRYPTION_KEY) NÃO foi implementada nesta sessão — decisão
+-- deliberada de não forçar uma mudança de fluxo de leitura/escrita de um
+-- campo de segurança sem cobertura de teste para validar (a sessão que
+-- criou esta migration foi instruída a não escrever testes novos). Ver
+-- javadoc de AppUser.sipSecret para o mesmo aviso no lado do código Java.
+-- =============================================================
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- =============================================================
+-- M12 — Convenção de FK deste projeto (documentação, sem mudança de schema)
+--
+-- Convenção deste projeto: FKs nunca usam ON DELETE CASCADE — exclusão
+-- lógica via coluna active/is_active é o padrão; RESTRICT implícito impede
+-- exclusão física de registro referenciado, o que é intencional.
+--
+-- Exceções conhecidas e aceitas (tabelas de detalhe/log de uma entidade-mãe,
+-- sem existência própria fora dela — ex: cc_interaction_events,
+-- cc_chat_messages referenciando sua interação/sessão via ON DELETE CASCADE):
+-- não violam a convenção acima, que trata de FKs entre ENTIDADES de negócio
+-- (cliente, operação, BU, usuário, agente, fila, etc.), não de tabelas
+-- puramente subordinadas.
+-- =============================================================

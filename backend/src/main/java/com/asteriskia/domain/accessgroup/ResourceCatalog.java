@@ -24,7 +24,9 @@ public final class ResourceCatalog {
             "telecom.logs",
             "telecom.security",
             "telecom.audit",
-            "telecom.release"
+            "telecom.release",
+            "telecom.masterdata",
+            "telecom.modulo1"
     );
 
     public static final List<String> AGENTS = List.of(

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from uuid import UUID
 from database import DB
 from auth import require_admin, require_permission
+from secrets_crypto import encrypt_secret
 import asyncio, logging
 
 
@@ -111,12 +112,16 @@ async def upsert_secret(agent_id: UUID, body: SecretRequest):
     value = body.value.strip()
     if not key or not value:
         raise HTTPException(400, "key e value são obrigatórios")
+    # Achado M4 da auditoria: cifra o valor antes de persistir (Fernet, chave
+    # em AGENT_SECRETS_ENCRYPTION_KEY). Sem a chave configurada, encrypt_secret
+    # devolve o valor em texto puro (fail-open documentado em secrets_crypto.py).
+    stored_value = encrypt_secret(value)
     async with DB() as db:
         await db.execute("""
             INSERT INTO agent_secrets (agent_id, key, value)
             VALUES ($1, $2, $3)
             ON CONFLICT (agent_id, key) DO UPDATE SET value=$3
-        """, agent_id, key, value)
+        """, agent_id, key, stored_value)
     return {"ok": True, "key": key}
 
 @router.delete("/agents/{agent_id}/secrets/{key}", dependencies=_SECRETS_WRITE)

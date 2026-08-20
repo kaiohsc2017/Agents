@@ -51,24 +51,31 @@ async def execute_node(node: Dict[str, Any], context: Dict[str, Any]) -> Dict[st
     if node_type == "actionNode":
         if sub_type == "ssh":
             cmd = _interpolate(data.get("cmd", "uptime"), context)
-            # Simula/executa comando local/remoto
-            out["cmd"] = cmd
-            out["stdout"] = f"[SSH Exec Output]: Comando '{cmd}' executado com sucesso no endpoint."
-            out["exit_code"] = 0
-            return out
+            # Auditoria 2026-08-19 (achado A1): este nó fabricava um "sucesso" fictício
+            # sem executar nenhum comando SSH real. Não há executor SSH implementado
+            # nesta instalação — falha explicitamente em vez de mentir no histórico.
+            raise NotImplementedError(
+                f"Nó do tipo 'ssh' ainda não está implementado nesta instalação — "
+                f"nenhum comando foi executado (comando solicitado: '{cmd}')."
+            )
 
         elif sub_type == "http":
             url = _interpolate(data.get("url", "https://httpbin.org/get"), context)
-            out["url"] = url
-            out["http_status"] = 200
-            out["response_body"] = {"status": "ok", "target": url}
-            return out
+            # Auditoria 2026-08-19 (achado A1): este nó fabricava HTTP 200 fictício
+            # sem fazer nenhuma requisição real. Falha explicitamente.
+            raise NotImplementedError(
+                f"Nó do tipo 'http' ainda não está implementado nesta instalação — "
+                f"nenhuma requisição foi feita (URL solicitada: '{url}')."
+            )
 
         elif sub_type == "sql":
             query = _interpolate(data.get("query", "SELECT 1"), context)
-            out["query"] = query
-            out["rows"] = [{"id": 1, "status": "ONLINE", "latency_ms": 12}]
-            return out
+            # Auditoria 2026-08-19 (achado A1): este nó fabricava linhas fictícias
+            # sem executar nenhuma consulta real. Falha explicitamente.
+            raise NotImplementedError(
+                f"Nó do tipo 'sql' ainda não está implementado nesta instalação — "
+                f"nenhuma consulta foi executada (query solicitada: '{query}')."
+            )
 
         elif sub_type == "audio_qos":
             phone = _interpolate(data.get("phone", "08007771234"), context)
@@ -112,42 +119,59 @@ async def execute_node(node: Dict[str, Any], context: Dict[str, Any]) -> Dict[st
 
         elif sub_type == "rag":
             query = _interpolate(data.get("query", "SOP Telecom failover"), context)
-            out["rag_matches"] = [
-                {"title": "SOP_Telecom_Failover_0800.pdf", "similarity": 0.89, "snippet": "Em caso de falha no tronco principal, comutar prioridade no Asterisk para TRUNK_BACKUP_TIM."}
-            ]
-            out["query"] = query
-            return out
+            # Auditoria 2026-08-19 (achado M5, mesma classe do achado A1): este nó
+            # fabricava sempre o mesmo trecho fixo de "SOP_Telecom_Failover_0800.pdf"
+            # como se fosse uma busca vetorial real na base de conhecimento — não há
+            # busca RAG real implementada nesta instalação. Falha explicitamente.
+            raise NotImplementedError(
+                f"Nó do tipo 'rag' ainda não está implementado nesta instalação — "
+                f"nenhuma decisão real foi tomada (consulta solicitada: '{query}')."
+            )
 
         elif sub_type == "condition":
             cond = data.get("condition", "true")
-            # Avaliação simples de condição
-            out["condition_met"] = True
-            out["branch"] = "yes"
-            return out
+            # Auditoria 2026-08-19 (achado M5, mesma classe do achado A1): este nó
+            # fabricava sempre condition_met=True/branch='yes', sem avaliar a
+            # condição de verdade. Falha explicitamente em vez de mentir no
+            # histórico e derrubar um branch de fluxo indevidamente.
+            raise NotImplementedError(
+                f"Nó do tipo 'condition' ainda não está implementado nesta "
+                f"instalação — nenhuma decisão real foi tomada (condição "
+                f"solicitada: '{cond}')."
+            )
 
     # 4. ATUADORES & NOTIFICAÇÕES (Actuators)
     if node_type == "actuatorNode":
         if sub_type == "telegram":
             chat = data.get("chat", "NOC_TELECOM")
-            out["sent"] = True
-            out["channel"] = f"Telegram ({chat})"
-            out["message"] = f"Alerta enviado ao Telegram: {data.get('label')}"
-            return out
+            # Auditoria 2026-08-19 (achado A1): este nó fabricava "enviado com sucesso"
+            # sem chamar a API do Telegram de verdade. Falha explicitamente.
+            raise NotImplementedError(
+                f"Nó do tipo 'telegram' ainda não está implementado nesta instalação — "
+                f"nenhuma mensagem foi enviada (chat de destino solicitado: '{chat}')."
+            )
 
         elif sub_type == "asterisk_action":
             action = data.get("action", "set_trunk_priority")
             trunk = data.get("trunk", "TRUNK_BACKUP_TIM")
-            out["ami_action"] = action
-            out["target_trunk"] = trunk
-            out["result"] = "Tronco de contingência ativado com sucesso via AMI."
-            return out
+            # Auditoria 2026-08-19 (achado A1): este nó fabricava "tronco de contingência
+            # ativado via AMI" sem emitir nenhuma ação AMI real no Asterisk — o chamado
+            # "Auto-Cura" do Flow Canvas nunca comutou tronco algum de verdade nesta
+            # instalação. Falha explicitamente.
+            raise NotImplementedError(
+                f"Nó do tipo 'asterisk_action' ainda não está implementado nesta "
+                f"instalação — nenhuma ação AMI foi executada (ação '{action}', "
+                f"tronco '{trunk}')."
+            )
 
         elif sub_type == "voice_call":
             num = data.get("phone", "9001")
-            out["voice_originated"] = True
-            out["destination"] = num
-            out["message"] = f"Chamada telefônica de alerta originada para o ramal {num}."
-            return out
+            # Auditoria 2026-08-19 (achado A1): este nó fabricava "chamada originada"
+            # sem originar nenhuma ligação real via AMI/Asterisk. Falha explicitamente.
+            raise NotImplementedError(
+                f"Nó do tipo 'voice_call' ainda não está implementado nesta instalação "
+                f"— nenhuma chamada foi originada (destino solicitado: '{num}')."
+            )
 
     out["message"] = f"Nó '{data.get('label', node.get('id'))}' executado."
     return out

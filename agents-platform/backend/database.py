@@ -68,7 +68,11 @@ CREATE TABLE IF NOT EXISTS agent_secrets (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     agent_id    UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
     key         TEXT NOT NULL,
-    value       TEXT NOT NULL,  -- armazenado em texto; criptografia via app-level futuramente
+    value       TEXT NOT NULL,  -- cifrado em app-level via secrets_crypto.py (Fernet) quando
+                                -- AGENT_SECRETS_ENCRYPTION_KEY está configurada; segredos
+                                -- gravados antes desta mudança (ou com a chave ausente) ficam
+                                -- em texto puro — limitação conhecida, sem migração de dados
+                                -- automática nesta entrega (arriscado sem aprovação explícita)
     created_at  TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(agent_id, key)
 );
@@ -169,6 +173,24 @@ DO $$ BEGIN
   ALTER TABLE agents ADD COLUMN IF NOT EXISTS on_failure_trigger_agent_id UUID;
   ALTER TABLE agents ADD COLUMN IF NOT EXISTS schedules JSONB[] DEFAULT '{}';
 EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- M11 (auditoria 2026-08-20): servers.auth_type é enum-like (só 'password'|'key'
+-- de fato usados/aceitos por routers/servers.py) sem nenhuma proteção no banco —
+-- um INSERT/UPDATE fora da API (script manual, outra integração futura) podia
+-- gravar qualquer texto. Adicionado via ALTER separado (não dentro do
+-- CREATE TABLE IF NOT EXISTS já existente, que não roda de novo em bancos já
+-- provisionados) para não quebrar deploys anteriores. Guardado por
+-- pg_constraint para ser idempotente, já que ADD CONSTRAINT não aceita
+-- "IF NOT EXISTS" nesta versão do PostgreSQL.
+DO $$ BEGIN
+  IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'servers_auth_type_check'
+  ) THEN
+      ALTER TABLE servers
+          ADD CONSTRAINT servers_auth_type_check
+          CHECK (auth_type IN ('password', 'key'));
+  END IF;
 END $$;
 """
 

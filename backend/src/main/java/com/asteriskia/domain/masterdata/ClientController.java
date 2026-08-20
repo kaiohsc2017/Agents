@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -66,6 +67,9 @@ public class ClientController {
     @PutMapping("/{id}")
     public ResponseEntity<Client> updateClient(
             @PathVariable Integer id, @Valid @RequestBody Client client, HttpServletRequest req) {
+        if (BusinessUnitContext.isRestricted() && !existingClientInScope(id)) {
+            return ResponseEntity.notFound().build();
+        }
         client.setId(id);
         Client saved = clientRepo.save(client);
         auditService.log(
@@ -78,6 +82,9 @@ public class ClientController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteClient(@PathVariable Integer id, HttpServletRequest req) {
+        if (BusinessUnitContext.isRestricted() && !existingClientInScope(id)) {
+            return ResponseEntity.notFound().build();
+        }
         auditService.log(req, "MASTERDATA_DELETE", "Cliente removido (id=" + id + ")", true);
         clientRepo.deleteById(id);
         return ResponseEntity.noContent().build();
@@ -97,6 +104,9 @@ public class ClientController {
                                 () ->
                                         new ResourceNotFoundException(
                                                 "Cliente não encontrado: " + clientId));
+        if (BusinessUnitContext.isRestricted() && !clientInScope(client)) {
+            throw new ResourceNotFoundException("Cliente não encontrado: " + clientId);
+        }
         Operation op =
                 opRepo.findById(operationId)
                         .orElseThrow(
@@ -123,6 +133,9 @@ public class ClientController {
                                 () ->
                                         new ResourceNotFoundException(
                                                 "Cliente não encontrado: " + clientId));
+        if (BusinessUnitContext.isRestricted() && !clientInScope(client)) {
+            throw new ResourceNotFoundException("Cliente não encontrado: " + clientId);
+        }
         return ResponseEntity.ok(client.getOperations().stream().toList());
     }
 
@@ -136,7 +149,8 @@ public class ClientController {
             @RequestBody List<Integer> businessUnitIds,
             HttpServletRequest req) {
         var clientOpt = clientRepo.findById(id);
-        if (clientOpt.isEmpty()) {
+        if (clientOpt.isEmpty()
+                || (BusinessUnitContext.isRestricted() && !clientInScope(clientOpt.get()))) {
             return ResponseEntity.notFound().build();
         }
         var resolved = BusinessUnitResolver.resolve(buRepo, businessUnitIds);
@@ -156,5 +170,25 @@ public class ClientController {
                 "BUs do cliente '" + saved.getName() + "' atualizadas (id=" + id + ")",
                 true);
         return ResponseEntity.ok(saved);
+    }
+
+    /**
+     * A3 (auditoria 2026-08-20 — IDOR): true se o cliente pertence a alguma BU do usuário
+     * autenticado — mesmo padrão de {@code ConnectivityController.inBusinessUnitScope}. Só
+     * {@code GET /clients} filtrava por BU até esta correção; os endpoints de mutação por
+     * {@code {id}} abaixo aceitavam qualquer id existente, permitindo a um usuário restrito a
+     * uma BU ler/alterar/excluir clientes de outra BU. Retorna 404 (nunca 403) para não vazar a
+     * existência do recurso a quem não tem acesso a ele.
+     */
+    private boolean clientInScope(Client client) {
+        return client.getBusinessUnits().stream()
+                .map(BusinessUnit::getId)
+                .anyMatch(BusinessUnitContext.currentBusinessUnitIds()::contains);
+    }
+
+    /** Variante que já busca o cliente por id — trata "não existe" como "fora de escopo". */
+    private boolean existingClientInScope(Integer id) {
+        Optional<Client> clientOpt = clientRepo.findById(id);
+        return clientOpt.isPresent() && clientInScope(clientOpt.get());
     }
 }

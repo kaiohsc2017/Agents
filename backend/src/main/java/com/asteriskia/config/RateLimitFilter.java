@@ -42,11 +42,26 @@ public class RateLimitFilter implements Filter {
     private static final long WINDOW_MS    = 60_000L;     // 1 minuto
     private static final long BLOCK_MS     = 5 * 60_000L; // 5 minutos
 
-    /** Endpoints protegidos por rate limit — login e a segunda etapa do 2FA (código TOTP). */
+    /**
+     * Endpoints protegidos pelo rate limit apertado (brute-force) — login/2FA, mais os endpoints
+     * de maior risco de abuso identificados na auditoria: criação de teste de conectividade
+     * (dispara ligação real) e abertura de chamado no Jira (ação externa com custo/efeito real).
+     */
     private static final Set<String> LIMITED_PATHS = Set.of(
             "/api/v1/auth/login",
-            "/api/v1/auth/totp/verify"
+            "/api/v1/auth/totp/verify",
+            "/api/v1/number-tests",
+            "/api/v1/suporte/abrir"
     );
+
+    /**
+     * Limite genérico, mais frouxo, aplicado a toda a API autenticada (exceto os paths acima, que
+     * já têm um limite mais apertado) — mitiga abuso/DoS de qualquer endpoint sem exigir um
+     * matcher dedicado por rota.
+     */
+    private static final int  GENERAL_MAX_ATTEMPTS = 120;
+    private static final long GENERAL_WINDOW_MS    = 60_000L; // 1 minuto
+    private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>();
 
     // Chave (IP + path) → contagem + timestamp da primeira tentativa nesta janela.
     // Buckets separados por endpoint evitam que tentativas de login consumam o
@@ -65,6 +80,9 @@ public class RateLimitFilter implements Filter {
 
         String path = request.getServletPath();
         if (!LIMITED_PATHS.contains(path)) {
+            if (path.startsWith("/api/v1/") && !applyGeneralLimit(request, response, path)) {
+                return;
+            }
             chain.doFilter(req, res);
             return;
         }
@@ -107,6 +125,32 @@ public class RateLimitFilter implements Filter {
         }
 
         chain.doFilter(req, res);
+    }
+
+    /**
+     * Limite genérico e mais frouxo para toda a API autenticada. Retorna {@code false} (já
+     * respondeu 429) quando o limite foi excedido; {@code true} quando a requisição pode seguir.
+     */
+    private boolean applyGeneralLimit(HttpServletRequest request, HttpServletResponse response, String path)
+            throws IOException {
+        String ip  = resolveIp(request);
+        String key = ip + "|" + path;
+        long now   = Instant.now().toEpochMilli();
+
+        Bucket bucket = generalBuckets.compute(key, (k, b) -> {
+            if (b == null || now - b.windowStart() > GENERAL_WINDOW_MS) {
+                return new Bucket(new AtomicInteger(1), now);
+            }
+            b.count().incrementAndGet();
+            return b;
+        });
+
+        if (bucket.count().get() > GENERAL_MAX_ATTEMPTS) {
+            log.warn("Rate limit geral disparado: IP {} excedeu {} req/min em {}", ip, GENERAL_MAX_ATTEMPTS, path);
+            sendTooMany(response, GENERAL_WINDOW_MS / 1000);
+            return false;
+        }
+        return true;
     }
 
     private void sendTooMany(HttpServletResponse response, long retryAfterSec) throws IOException {

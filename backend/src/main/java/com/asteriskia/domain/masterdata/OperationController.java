@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -65,6 +66,9 @@ public class OperationController {
     @PutMapping("/{id}")
     public ResponseEntity<Operation> updateOp(
             @PathVariable Integer id, @Valid @RequestBody Operation op, HttpServletRequest req) {
+        if (BusinessUnitContext.isRestricted() && !existingOperationInScope(id)) {
+            return ResponseEntity.notFound().build();
+        }
         op.setId(id);
         Operation saved = opRepo.save(op);
         auditService.log(
@@ -77,6 +81,9 @@ public class OperationController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOp(@PathVariable Integer id, HttpServletRequest req) {
+        if (BusinessUnitContext.isRestricted() && !existingOperationInScope(id)) {
+            return ResponseEntity.notFound().build();
+        }
         auditService.log(req, "MASTERDATA_DELETE", "Operação removida (id=" + id + ")", true);
         opRepo.deleteById(id);
         return ResponseEntity.noContent().build();
@@ -92,7 +99,8 @@ public class OperationController {
             @RequestBody List<Integer> businessUnitIds,
             HttpServletRequest req) {
         var opOpt = opRepo.findById(id);
-        if (opOpt.isEmpty()) {
+        if (opOpt.isEmpty()
+                || (BusinessUnitContext.isRestricted() && !operationInScope(opOpt.get()))) {
             return ResponseEntity.notFound().build();
         }
         var resolved = BusinessUnitResolver.resolve(buRepo, businessUnitIds);
@@ -127,7 +135,8 @@ public class OperationController {
             @RequestBody List<Integer> clientIds,
             HttpServletRequest req) {
         var opOpt = opRepo.findById(id);
-        if (opOpt.isEmpty()) {
+        if (opOpt.isEmpty()
+                || (BusinessUnitContext.isRestricted() && !operationInScope(opOpt.get()))) {
             return ResponseEntity.notFound().build();
         }
         Operation op = opOpt.get();
@@ -162,5 +171,22 @@ public class OperationController {
                 "Clientes vinculados à operação '" + op.getName() + "' atualizados (id=" + id + ")",
                 true);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * A3 (auditoria 2026-08-20 — IDOR): true se a operação pertence a alguma BU do usuário
+     * autenticado — mesmo padrão aplicado em {@code ClientController}. Retorna 404 (nunca 403)
+     * para não vazar a existência do recurso a quem não tem acesso a ele.
+     */
+    private boolean operationInScope(Operation op) {
+        return op.getBusinessUnits().stream()
+                .map(BusinessUnit::getId)
+                .anyMatch(BusinessUnitContext.currentBusinessUnitIds()::contains);
+    }
+
+    /** Variante que já busca a operação por id — trata "não existe" como "fora de escopo". */
+    private boolean existingOperationInScope(Integer id) {
+        Optional<Operation> opOpt = opRepo.findById(id);
+        return opOpt.isPresent() && operationInScope(opOpt.get());
     }
 }

@@ -2,6 +2,7 @@ package com.asteriskia.domain.alert;
 
 import jakarta.validation.Valid;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,6 +80,25 @@ public class AlertController {
         }
         if (!audioFile.exists() || !audioFile.canRead()) {
             log.warn("Arquivo de audio do alerta nao encontrado: {}", audioFile.getAbsolutePath());
+            return ResponseEntity.<Resource>notFound().build();
+        }
+        // M3 (auditoria 2026-08-20): defesa em profundidade contra path traversal — mesmo
+        // audioFilePath vindo do banco (não do usuário diretamente), um valor malicioso
+        // (ex: "../../etc/passwd") persistido por outro caminho não deve conseguir escapar do
+        // diretório de armazenamento configurado. Resolve os caminhos canônicos (elimina "..")
+        // e rejeita se o arquivo não estiver de fato dentro de audioStoragePath.
+        try {
+            String storageCanonical = new File(audioStoragePath).getCanonicalPath();
+            String fileCanonical = audioFile.getCanonicalPath();
+            if (!fileCanonical.startsWith(storageCanonical + File.separator)
+                    && !fileCanonical.equals(storageCanonical)) {
+                log.warn(
+                        "Tentativa de acesso a audio fora do diretorio de armazenamento: {}",
+                        fileCanonical);
+                return ResponseEntity.<Resource>notFound().build();
+            }
+        } catch (IOException e) {
+            log.warn("Falha ao resolver caminho canonico do audio do alerta", e);
             return ResponseEntity.<Resource>notFound().build();
         }
         Resource resource = new FileSystemResource(audioFile);

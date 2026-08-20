@@ -118,11 +118,29 @@ const LINK_RESOURCE: Partial<Record<Page, string>> = {
 
 const AGENTS_SUBPAGES: Page[] = ['agDashboard', 'agAgents', 'agServers', 'agKnowledge', 'agLogs', 'agAlerts', 'agSecrets', 'agLlm', 'agFlows']
 
+/**
+ * Migração one-shot das chaves legadas 'voipia_token'/'voipia_user' para as
+ * chaves canônicas 'agentia_token'/'agentia_user' — preserva sessões já
+ * abertas no momento do deploy desta unificação (D1). Roda uma única vez no
+ * boot do módulo, antes de qualquer leitura de estado do React.
+ */
+function migrateLegacySessionKeys(): void {
+  const legacyToken = localStorage.getItem('voipia_token')
+  if (!localStorage.getItem('agentia_token') && legacyToken) {
+    localStorage.setItem('agentia_token', legacyToken)
+    const legacyUser = localStorage.getItem('voipia_user')
+    if (legacyUser) localStorage.setItem('agentia_user', legacyUser)
+  }
+  localStorage.removeItem('voipia_token')
+  localStorage.removeItem('voipia_user')
+}
+migrateLegacySessionKeys()
+
 export default function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token'))
-  const [username, setUsername] = useState<string>(() => localStorage.getItem('agentia_user') || localStorage.getItem('voipia_user') || '')
-  const [role, setRole] = useState<'ADMIN' | 'USER'>(() => authSessionFromToken(localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token')).role)
-  const [perms, setPerms] = useState<Record<string, string>>(() => authSessionFromToken(localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token')).perms)
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('agentia_token'))
+  const [username, setUsername] = useState<string>(() => localStorage.getItem('agentia_user') || '')
+  const [role, setRole] = useState<'ADMIN' | 'USER'>(() => authSessionFromToken(localStorage.getItem('agentia_token')).role)
+  const [perms, setPerms] = useState<Record<string, string>>(() => authSessionFromToken(localStorage.getItem('agentia_token')).perms)
   const [showSoftphone, setShowSoftphone] = useState(false)
 
   const pageFromHash = (): Page => {
@@ -132,7 +150,7 @@ export default function App() {
       ...AGENTS_SUBPAGES,
     ]
     if (!valid.includes(hash)) return 'dashboard'
-    const session = authSessionFromToken(localStorage.getItem('agentia_token') || localStorage.getItem('voipia_token'))
+    const session = authSessionFromToken(localStorage.getItem('agentia_token'))
     if (hash === 'accessGroups') return session.role === 'ADMIN' ? hash : 'dashboard'
     if (hash === 'agents') return AGENTS_SUBPAGES.find(p => session.hasRead(PAGE_RESOURCE[p]!) && session.hasRead(LINK_RESOURCE[p]!)) ?? 'dashboard'
     const resource = PAGE_RESOURCE[hash]
@@ -175,7 +193,9 @@ export default function App() {
         .then(({ data }) => {
           if (Array.isArray(data)) setAgentsAlertCount(data.length)
         })
-        .catch(() => {})
+        .catch((error) => {
+          console.error('Falha ao buscar contagem de alertas da plataforma de agentes:', error)
+        })
     }
     fetchAlerts()
     const interval = setInterval(fetchAlerts, 30_000)
@@ -194,8 +214,6 @@ export default function App() {
   const handleSignOut = () => {
     localStorage.removeItem('agentia_token')
     localStorage.removeItem('agentia_user')
-    localStorage.removeItem('voipia_token')
-    localStorage.removeItem('voipia_user')
     revokeSession()
     setToken(null)
     setUsername('')

@@ -47,13 +47,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-            // Achado de segurança: token de streaming (60s, scope=stream — ver
-            // StreamingTokenFilter/JwtService.generateStreamingToken) é pensado
-            // só pra query string de WS/SSE. Sem esta checagem, ele funcionaria
-            // como Bearer normal em QUALQUER endpoint (mesmo privilégio do
-            // usuário) durante sua validade — baixo risco dado o TTL curto, mas
+            // Achado de segurança (A2, auditoria 2026-08-20): o tempToken emitido na
+            // primeira etapa do login com 2FA ativo (claim "totp_pending=true", 5 min
+            // de validade, gerado por JwtService.generateTempToken) não carrega
+            // "role"/"perm", mas era aceito por este filtro como um Bearer comum —
+            // extractRole devolvia "USER" por ausência da claim, autenticando o
+            // portador do tempToken como um usuário comum em QUALQUER rota, sem
+            // nunca validar o código TOTP. Isso permitia bypass parcial do 2FA a
+            // quem capturasse o tempToken. Corrigido rejeitando explicitamente
+            // qualquer token com essa claim aqui — o único consumidor legítimo do
+            // tempToken é POST /api/v1/auth/totp/verify (TotpController), que já lê
+            // o valor do corpo da requisição, nunca do header Authorization, então
+            // não depende deste filtro para funcionar.
+            //
+            // Achado de segurança (já existente): token de streaming (60s,
+            // scope=stream — ver StreamingTokenFilter/JwtService.generateStreamingToken)
+            // é pensado só pra query string de WS/SSE. Sem esta checagem, ele
+            // funcionaria como Bearer normal em QUALQUER endpoint (mesmo privilégio
+            // do usuário) durante sua validade — baixo risco dado o TTL curto, mas
             // contraria o design pretendido de "restrito a streaming".
             if (jwtService.isValid(token) && !jwtService.isStreamingScope(token)
+                    && !jwtService.isTotpPending(token)
                     && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 String username = jwtService.extractUsername(token);

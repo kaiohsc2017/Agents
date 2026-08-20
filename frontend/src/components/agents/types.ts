@@ -173,7 +173,7 @@ export interface FlowNodeData {
   action?: string;
   trunk?: string;
   phone?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface FlowNode {
@@ -216,8 +216,8 @@ export interface FlowExecutionStep {
   node_type: string;
   node_name?: string;
   status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
-  input_payload?: any;
-  output_payload?: any;
+  input_payload?: Record<string, unknown>;
+  output_payload?: Record<string, unknown>;
   duration_ms?: number;
   started_at: string;
   finished_at?: string;

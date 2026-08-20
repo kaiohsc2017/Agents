@@ -25,6 +25,14 @@ export function AgentLogModal({ agentId, agentName, onClose }: AgentLogModalProp
   const [loading, setLoading] = useState(true);
   const logEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Limpa o timer do estado "copiado" ao desmontar, evitando setState em componente já desmontado.
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     // 1. Carga inicial dos logs recentes
@@ -77,7 +85,11 @@ export function AgentLogModal({ agentId, agentName, onClose }: AgentLogModalProp
     const text = logs.map((l) => `[${l.ts}] [${l.level.toUpperCase()}] ${l.server ? `[${l.server}] ` : ''}${l.message}`).join('\n');
     navigator.clipboard.writeText(text);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => {
+      copiedTimerRef.current = null;
+      setCopied(false);
+    }, 2000);
   };
 
   return (

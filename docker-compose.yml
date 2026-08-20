@@ -264,7 +264,10 @@ services:
       agentia-net:
         ipv4_address: 172.16.9.17
     healthcheck:
-      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 9092), timeout=3).close()"]
+      # Envia um frame AudioSocket HANGUP (header 3 bytes: kind=0x00, length=0x0000) antes de
+      # fechar — protocolo-aware, para não disparar o warning de "conexão encerrada antes do
+      # frame UUID" a cada checagem (zabbix_alert_flow.py já trata HANGUP como desconexão normal).
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 9092), timeout=3); s.sendall(b'\\x00\\x00\\x00'); s.close()"]
       interval: 20s
       timeout: 8s
       retries: 5

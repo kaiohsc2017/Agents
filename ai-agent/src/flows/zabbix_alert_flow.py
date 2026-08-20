@@ -48,14 +48,29 @@ _CLASSIFICATION_TO_STATUS = {
 _MAX_RESPONSE_BUFFER_BYTES = 16000 * 60 * 4  # ~4 min de áudio a 16000 bytes/s
 
 
+class _CleanHangup(Exception):
+    """Sinaliza que o peer encerrou a conexão com um frame HANGUP explícito.
+
+    Distinto de um EOF/protocolo inválido: é o desligamento normal do protocolo
+    AudioSocket (inclusive o probe do healthcheck, ver docker-compose.yml) — não
+    deve gerar warning no log, só as desconexões genuinamente inesperadas.
+    """
+
+
 async def _read_initial_uuid(reader: asyncio.StreamReader) -> str | None:
-    """Lê frames até achar o frame UUID inicial (ou EOF/hangup antes disso)."""
+    """Lê frames até achar o frame UUID inicial.
+
+    Levanta `_CleanHangup` se o peer mandar um HANGUP explícito antes do UUID
+    (desligamento normal, nunca logado como warning). Retorna None só quando a
+    conexão termina sem nenhum frame reconhecível (EOF cru) — esse caso sim é
+    anômalo e deve ser logado.
+    """
     frame: Frame | None = await read_frame(reader)
     while frame is not None:
         if frame.kind == FrameKind.UUID:
             return parse_uuid_payload(frame.payload)
         if frame.kind == FrameKind.HANGUP:
-            return None
+            raise _CleanHangup()
         frame = await read_frame(reader)
     return None
 
@@ -104,6 +119,10 @@ async def handle_connection(
             # coroutine indefinidamente — só o Asterisk deveria conectar aqui, mas o
             # custo desta defesa é baixo.
             uuid = await asyncio.wait_for(_read_initial_uuid(reader), timeout=10)
+        except _CleanHangup:
+            # Desligamento normal do protocolo (inclui o probe do healthcheck) — não é erro.
+            logger.debug("Conexão AudioSocket encerrada por HANGUP explícito antes do UUID.")
+            return
         except asyncio.TimeoutError:
             logger.warning("Timeout aguardando o frame UUID inicial — encerrando conexão.")
             return

@@ -32,10 +32,12 @@ export const FlowsList: React.FC<FlowsListProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const res = await agentsClient.get('/flows/');
-      setFlows(res.data || []);
+      const res = await agentsClient.get('/api/flows/');
+      const data = Array.isArray(res.data) ? res.data : [];
+      setFlows(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Erro ao carregar lista de fluxos.');
+      setFlows([]);
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ export const FlowsList: React.FC<FlowsListProps> = ({
   const handleRunNow = async (flowId: string) => {
     try {
       setRunningId(flowId);
-      const res = await agentsClient.post(`/flows/${flowId}/run`, {
+      const res = await agentsClient.post(`/api/flows/${flowId}/run`, {
         trigger_source: 'flows_list_quick_run',
       });
       if (res.data?.execution_id) {
@@ -96,14 +98,14 @@ export const FlowsList: React.FC<FlowsListProps> = ({
   const handleDelete = async (flowId: string, name: string) => {
     if (!confirm(`Tem certeza que deseja excluir o fluxo "${name}"?`)) return;
     try {
-      await agentsClient.delete(`/flows/${flowId}`);
-      setFlows((prev) => prev.filter((f) => f.id !== flowId));
+      await agentsClient.delete(`/api/flows/${flowId}`);
+      setFlows((prev) => (Array.isArray(prev) ? prev.filter((f) => f.id !== flowId) : []));
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Erro ao excluir fluxo.');
     }
   };
 
-  const activeCount = flows.filter((f) => f.is_active).length;
+  const activeCount = Array.isArray(flows) ? flows.filter((f) => f && f.is_active).length : 0;
 
   return (
     <div className="space-y-6">
@@ -264,7 +266,7 @@ export const FlowsList: React.FC<FlowsListProps> = ({
 
                       <button
                         onClick={async () => {
-                          const res = await agentsClient.get(`/flows/${flow.id}`);
+                          const res = await agentsClient.get(`/api/flows/${flow.id}`);
                           onOpenCanvas(res.data);
                         }}
                         className="p-1.5 rounded-lg border border-border hover:bg-primary/10 hover:text-primary transition-colors text-muted-foreground"

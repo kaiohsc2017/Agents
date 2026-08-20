@@ -168,7 +168,7 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
         })),
       };
 
-      await agentsClient.put(`/flows/${flow.id}`, {
+      await agentsClient.put(`/api/flows/${flow.id}`, {
         name: flowName,
         description: flowDesc,
         is_active: isActive,
@@ -196,7 +196,7 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
     setRunning(true);
     setFeedback(null);
     try {
-      const res = await agentsClient.post(`/flows/${flow.id}/run`, {
+      const res = await agentsClient.post(`/api/flows/${flow.id}/run`, {
         trigger_source: 'live_canvas_test',
         trigger_data: { test_mode: true },
       });

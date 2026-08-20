@@ -24,9 +24,9 @@ export const FlowExecutionModal: React.FC<FlowExecutionModalProps> = ({
   const fetchDetails = async () => {
     try {
       setLoading(true);
-      const res = await agentsClient.get(`/flows/executions/${executionId}/details`);
-      setExecution(res.data.execution);
-      setSteps(res.data.steps || []);
+      const res = await agentsClient.get(`/api/flows/executions/${executionId}/details`);
+      setExecution(res.data?.execution ?? null);
+      setSteps(Array.isArray(res.data?.steps) ? res.data.steps : []);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Erro ao carregar detalhes da execução.');
     } finally {

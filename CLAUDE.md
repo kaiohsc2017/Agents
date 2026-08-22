@@ -58,18 +58,19 @@ não neste.
 
 ### Stack de containers
 
-Rede Docker isolada, 8 serviços no `docker-compose.yml`: `postgres`, `asterisk`,
-`docker-helper`, `backend` (Java), `frontend` (React/Nginx), `ai-agent` (Python), `agents-backend`
+Rede Docker isolada (`172.16.9.0/24`), 8 serviços no `docker-compose.yml`: `postgres`, `asterisk`,
+`docker-helper`, `backend` (Java), `frontend` (React/Nginx), `ai-agent` (Python), `agents-api`
 (FastAPI), `security` (Fail2ban/nftables). Containers batizados `agentia-*`.
 
 | Container | IP interno | Função |
 |---|---|---|
-| `agentia-postgres` | `172.16.7.11` | PostgreSQL 16 + pgvector/pg_trgm |
-| `agentia-asterisk` | `172.16.7.12` | Asterisk 21 LTS (PJSIP/WebRTC/AudioSocket) |
-| `agentia-backend` | `172.16.7.14` | Spring Boot 3.3 (Java 21)/Tomcat 11 |
-| `agentia-frontend` | `172.16.7.15` | Nginx 1.27 + React 19 SPA |
-| `agentia-agents-api` | `172.16.7.16` | FastAPI/Python 3.12 (Agentes Autônomos) |
-| `agentia-docker-helper` | `172.16.7.17` | Microserviço de controle de containers via `docker.sock` |
+| `agentia-postgres` | `172.16.9.11` | PostgreSQL 16 + pgvector/pg_trgm |
+| `agentia-asterisk` | `172.16.9.12` | Asterisk 21 LTS (PJSIP/WebRTC/AudioSocket) |
+| `agentia-docker-helper` | `172.16.9.13` | Microserviço de controle de containers via `docker.sock` |
+| `agentia-backend` | `172.16.9.14` | Spring Boot 3.3 (Java 21)/Tomcat 11 |
+| `agentia-frontend` | `172.16.9.15` | Nginx 1.27 + React 19 SPA |
+| `agentia-agents-api` | `172.16.9.16` | FastAPI/Python 3.12 (Agentes Autônomos) |
+| `agentia-ai-agent` | `172.16.9.17` | Python 3.12 / AudioSocket (Alertas Zabbix e Voz IA) |
 | `agentia-security` | host | Fail2ban + nftables |
 
 ### Fósseis conhecidos (não reintroduzir confusão)

@@ -200,10 +200,10 @@ flowchart LR
     Backend -.->|Sem Reinício de Containers| Services[Serviços em Runtime: Zabbix, Telegram, AD, Jira, IA]
 ```
 
-### 4.4. Arquitetura Unificada de Frontend (SPA Nativa + ReportECH UX)
+### 4.4. Arquitetura Unificada de Frontend (SPA Nativa + AgentIA UX)
 
 A Plataforma de Agentes IA foi unificada diretamente dentro do repositório React 19 principal (`frontend/src/components/agents/`), eliminando o encapsulamento por `<iframe>`:
-- **Padrão Visual Corporativo ReportECH:** Uso consistente de tipografia Geist, paleta com variáveis CSS, Badges semânticos de status (`idle`, `running`, `success`, `error`, `paused`), Cards e Tabelas padronizadas.
+- **Padrão Visual Corporativo AgentIA:** Uso consistente de tipografia Geist, paleta com variáveis CSS, Badges semânticos de status (`idle`, `running`, `success`, `error`, `paused`), Cards e Tabelas padronizadas.
 - **Roteamento SPA Dinâmico:** Subpáginas de agentes (`agDashboard`, `agAgents`, `agServers`, `agKnowledge`, `agLogs`, `agAlerts`, `agSecrets`, `agLlm`, `agFlows`) renderizadas diretamente pelo roteador do AgentIA com controle de acesso por RBAC.
 - **Streaming WebSockets:** Conexão direta com `/agents/ws/logs/{agent_id}` para logs em tempo real sem intermediários.
 

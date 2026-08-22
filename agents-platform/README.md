@@ -6,7 +6,7 @@ Plataforma de agentes autônomos de Inteligência Artificial integrada nativamen
 
 ## 🌐 Acesso Integrado
 
-A interface dos Agentes agora é **100% nativa** dentro da SPA do AgentIA, adotando o design system corporativo **ReportECH**:
+A interface dos Agentes agora é **100% nativa** dentro da SPA do AgentIA, adotando o design system corporativo do **AgentIA**:
 ```
 https://agentia.voiphash.com.br/#agDashboard
 ```

@@ -1,6 +1,6 @@
 # AgentIA
 
-Plataforma corporativa de **Agentes Autônomos de Inteligência Artificial + Monitoramento e Conectividade Telecom**, integrando **Asterisk 21 LTS + FastAPI + Spring Boot 3.3 (Java 21) + React 19** em arquitetura conteinerizada de Alta Disponibilidade (HA) com o padrão visual corporativo **ReportECH**.
+Plataforma corporativa de **Agentes Autônomos de Inteligência Artificial + Monitoramento e Conectividade Telecom**, integrando **Asterisk 21 LTS + FastAPI + Spring Boot 3.3 (Java 21) + React 19** em arquitetura conteinerizada de Alta Disponibilidade (HA) com o design system corporativo do **AgentIA**.
 
 ---
 
@@ -25,11 +25,12 @@ Plataforma corporativa de **Agentes Autônomos de Inteligência Artificial + Mon
 | **Frontend** | React 19 + TypeScript (`strict`) + Vite + Tailwind CSS + shadcn/ui + Recharts + Softphone WebRTC (JsSIP) |
 | **Backend Core** | Spring Boot 3.3 (Java 21) — WAR no Apache Tomcat 11 + WebSocket STOMP + Flyway |
 | **Agentes API** | FastAPI + Python 3.12 (asyncio, asyncpg, APScheduler, Google GenAI SDK) |
+| **Agente IA de Voz** | Python 3.12 (AudioSocket, Google GenAI SDK, STT/TTS) |
 | **Telefonia / PBX** | Asterisk 21 LTS — chan_pjsip + app_audiosocket + WebRTC + AudioSocket |
 | **Banco de Dados** | PostgreSQL 16 com extensões `pgvector`, `pg_trgm` e `uuid-ossp` |
 | **Proxy Reverso & TLS** | Caddy 2 — TLS automático (Let's Encrypt / ZeroSSL) e Proxy WebSocket/HTTP |
 | **Segurança / DevSecOps** | Fail2ban + nftables (Lockdown SIP) + Argon2id + JWT Seguro + Secrets Vault |
-| **Infraestrutura** | Docker Compose v2 — 7 containers em rede isolada `172.16.7.0/24` |
+| **Infraestrutura** | Docker Compose v2 — 8 containers em rede isolada `172.16.9.0/24` |
 
 ---
 
@@ -63,7 +64,7 @@ docker compose up -d --build
 
 | Serviço | Rota / URL | Descrição |
 |---------|------------|-----------|
-| **Painel AgentIA** | `https://agentia.voiphash.com.br` | Interface SPA unificada com design system ReportECH |
+| **Painel AgentIA** | `https://agentia.voiphash.com.br` | Interface SPA unificada com design system corporativo AgentIA |
 | **Plataforma de Agentes** | `https://agentia.voiphash.com.br/#agDashboard` | Módulo nativo integrado na barra lateral do AgentIA |
 | **Documentação Técnica** | `docs/` | Guias de implantação, arquitetura, manual e APIs |
 
@@ -73,12 +74,13 @@ docker compose up -d --build
 
 | Container | IP Interno | Função |
 |-----------|------------|--------|
-| `agentia-frontend` | `172.16.7.15` | Nginx 1.27 servindo React 19 SPA + Proxy interno |
-| `agentia-backend` | `172.16.7.14` | Spring Boot 3.3 (Java 21) / Tomcat 11 |
-| `agentia-agents-api` | `172.16.7.16` | FastAPI / Python 3.12 (Agentes Autônomos) |
-| `agentia-asterisk` | `172.16.7.12` | Asterisk 21 LTS (PJSIP / WebRTC / AudioSocket) |
-| `agentia-docker-helper` | `172.16.7.17` | Microserviço seguro de controle de containers |
-| `agentia-postgres` | `172.16.7.11` | PostgreSQL 16 + pgvector / pg_trgm |
+| `agentia-postgres` | `172.16.9.11` | PostgreSQL 16 + pgvector / pg_trgm |
+| `agentia-asterisk` | `172.16.9.12` | Asterisk 21 LTS (PJSIP / WebRTC / AudioSocket) |
+| `agentia-docker-helper` | `172.16.9.13` | Microserviço seguro de controle de containers via docker.sock |
+| `agentia-backend` | `172.16.9.14` | Spring Boot 3.3 (Java 21) / Tomcat 11 |
+| `agentia-frontend` | `172.16.9.15` | Nginx 1.27 servindo React 19 SPA + Proxy interno |
+| `agentia-agents-api` | `172.16.9.16` | FastAPI / Python 3.12 (Agentes Autônomos) |
+| `agentia-ai-agent` | `172.16.9.17` | Python 3.12 / AudioSocket (Alertas Zabbix e Voz IA) |
 | `agentia-security` | Host | Fail2ban + nftables (Lockdown de portas de voz) |
 
 ---

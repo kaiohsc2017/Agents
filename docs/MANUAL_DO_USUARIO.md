@@ -185,7 +185,7 @@ Exibe a esteira de incidentes críticos de infraestrutura capturados via integra
 
 ### 3.4. Plataforma Nativa de Agentes IA (8 Visões Especializadas)
 
-A plataforma de Agentes Autônomos está **nativamente integrada** à interface principal do AgentIA com o padrão visual corporativo ReportECH:
+A plataforma de Agentes Autônomos está **nativamente integrada** à interface principal do AgentIA com o design system corporativo do AgentIA:
 
 1. 📊 **Dashboard de Agentes:** Visão consolidada de KPIs operacionais (robôs ativos, execuções com sucesso, falhas, alertas), gráfico de taxa de sucesso por agente e tabela de execuções recentes.
 2. 🤖 **Agentes Autônomos:** Criação e gestão de robôs inteligentes com suporte a múltiplos tipos:
@@ -199,7 +199,7 @@ A plataforma de Agentes Autônomos está **nativamente integrada** à interface 
 6. 🚨 **Central de Alertas:** Histórico detalhado de notificações disparadas automaticamente pelos agentes para Telegram, E-mail corporativo ou Webhook.
 7. 🔑 **Secrets Vault:** Cofre seguro de credenciais por agente, permitindo utilizar senhas e tokens nos comandos com a sintaxe `{{NOME_DA_CHAVE}}`.
 8. ⚙️ **Configurações de IA & LLMs:** Painel para alternar entre provedores de IA (Google Gemini, Anthropic Claude, OpenAI, Ollama), selecionar modelos e realizar testes de prompt ao vivo.
-9. 🧩 **Agent Flow Canvas (DAG Swarm):** Estúdio visual interativo *drag-and-drop* no padrão ReportECH para criação e orquestração de fluxos multi-agente sem código.
+9. 🧩 **Agent Flow Canvas (DAG Swarm):** Estúdio visual interativo *drag-and-drop* no design system do AgentIA para criação e orquestração de fluxos multi-agente sem código.
 
 #### 3.4.1. Como Usar o Agent Flow Canvas (Orquestrador Visual DAG)
 

@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# AgentIA — Frontend SPA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interface Web unificada em Single Page Application (SPA) para a plataforma corporativa **AgentIA**, integrando telemetria de telefonia/conectividade, monitoramento de alarmes, softphone WebRTC e a suíte nativa de orquestração de Agentes Autônomos de IA e Agent Flow Canvas (DAG).
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Stack Tecnológica
 
-## React Compiler
+- **Framework:** React 19
+- **Linguagem:** TypeScript 5.x (`strict: true`)
+- **Build Tool:** Vite 6
+- **Estilização:** Tailwind CSS v3 + Radix UI / shadcn/ui + Geist Typography
+- **Gráficos & Visualização:** Recharts
+- **Telefonia WebRTC:** JsSIP (SIP over WebSocket WSS)
+- **Comunicação em Tempo Real:** WebSockets (FastAPI streaming & Spring Boot STOMP)
+- **Ícones:** Lucide React
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📁 Estrutura de Diretórios
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+frontend/src/
+├── api/              # Clientes de API REST, interceptors de autenticação JWT e refresh token
+├── components/       # Componentes reutilizáveis de interface
+│   ├── agents/       # Telas e módulos nativos da Plataforma de Agentes IA & Flow Canvas
+│   ├── common/       # Header, Sidebar, Modal, Badge, Button, Input, Table
+│   ├── softphone/    # Interface WebRTC de softphone para discagem e teste de áudio
+│   ├── telecom/      # Dashboards de conectividade, cadastros e monitoramento
+│   └── ui/           # Primitivos visuais shadcn/ui (dialog, dropdown, card, etc.)
+├── contexts/         # Contextos React (AuthContext, ThemeContext, WebRtcContext)
+├── data/             # Estruturas estáticas, releases notes e catálogo de permissões
+├── hooks/            # Custom hooks React
+├── services/         # Camada de serviços e integração de WebSockets
+└── types/            # Definições de tipos TypeScript
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🚀 Scripts de Desenvolvimento
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Instalar dependências
+npm install
+
+# Iniciar servidor de desenvolvimento local
+npm run dev
+
+# Validação estrita de tipos TypeScript (SDLC Gate)
+npx tsc --noEmit
+
+# Build de produção otimizado
+npm run build
+
+# Executar linter
+npm run lint
 ```
+
+---
+
+## 🔒 Segurança e Integração
+
+- **Autenticação:** JWT Bearer Token com expiração e refresh token transparente.
+- **Autorização (RBAC):** Controle estrito de visibilidade e ações por `resource_key` (`telecom.*`, `agents.*`).
+- **CSP & Headers:** Homologado com Content Security Policy restritiva gerenciada pelo Caddy 2 e Nginx.
